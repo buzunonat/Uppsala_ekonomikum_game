@@ -51,7 +51,8 @@ h1{
 .stat b{display:block;font:800 1.7em/1.15 var(--serif);color:var(--g2);font-variant-numeric:tabular-nums}
 
 /* Podium */
-.podium{display:grid;grid-template-columns:1fr 1.15fr 1fr;align-items:end;gap:clamp(8px,1.6vw,22px);max-width:1000px;margin:0 auto clamp(18px,3vw,34px)}
+.podium{display:grid;grid-template-columns:.9fr 1fr 1.18fr 1fr .9fr;grid-template-areas:"p4 p2 p1 p3 p5";align-items:end;gap:clamp(8px,1.4vw,20px);max-width:1240px;margin:0 auto clamp(22px,3.4vw,44px)}
+.p1{grid-area:p1}.p2{grid-area:p2}.p3{grid-area:p3}.p4{grid-area:p4}.p5{grid-area:p5}
 .pod{text-align:center;min-width:0}
 .pod .who{padding:0 .3em .6em}
 .medal{
@@ -64,6 +65,10 @@ h1{
 }
 .p2 .medal{--a:var(--silver1);--b:var(--silver2);--c:var(--silver3);animation-delay:-1s}
 .p3 .medal{--a:var(--bronze1);--b:var(--bronze2);--c:var(--bronze3);animation-delay:-2s}
+.p4 .medal,.p5 .medal{--a:#f3e3b5;--b:#b39654;--c:#5b4719;width:clamp(42px,4.6vw,66px);font-size:clamp(1.1rem,2vw,1.7rem);animation-delay:-.5s}
+.p5 .medal{animation-delay:-1.5s}
+.p4 .pname,.p5 .pname{font-size:clamp(.95rem,1.7vw,1.5rem)}
+.p4 .pval,.p5 .pval{font-size:clamp(1.05rem,1.9vw,1.65rem)}
 @keyframes bob{50%{transform:translateY(-6px) rotate(-4deg)}}
 .pname{font:800 clamp(1.05rem,2.2vw,1.9rem)/1.15 var(--serif);overflow-wrap:anywhere}
 .p1 .pname{font-size:clamp(1.25rem,2.8vw,2.4rem);color:var(--g1)}
@@ -78,6 +83,10 @@ h1{
 .p1 .block{height:clamp(110px,15vw,200px)}
 .p2 .block{height:clamp(80px,10.5vw,145px);background:linear-gradient(180deg,var(--silver1),var(--silver2) 50%,var(--silver3));color:rgba(40,45,55,.45)}
 .p3 .block{height:clamp(62px,8vw,110px);background:linear-gradient(180deg,var(--bronze1),var(--bronze2) 50%,var(--bronze3));color:rgba(70,30,5,.45)}
+.p4 .block,.p5 .block{background:linear-gradient(180deg,rgba(255,215,120,.32),rgba(255,215,120,.1));border:1px solid rgba(255,215,120,.4);color:rgba(255,226,150,.5);box-shadow:inset 0 1px 0 rgba(255,255,255,.2),0 12px 30px rgba(0,0,0,.35)}
+.p4 .block{height:clamp(46px,6vw,82px)}
+.p5 .block{height:clamp(36px,4.6vw,64px)}
+.p4 .block::after,.p5 .block::after{display:none}
 .block::after{content:"";position:absolute;inset:0;background:linear-gradient(105deg,transparent 35%,rgba(255,255,255,.55) 50%,transparent 65%);transform:translateX(-120%);animation:shine 5.5s ease-in-out infinite}
 .p2 .block::after{animation-delay:1.6s}.p3 .block::after{animation-delay:3.2s}
 @keyframes shine{0%,60%{transform:translateX(-120%)}85%,100%{transform:translateX(120%)}}
@@ -85,18 +94,26 @@ h1{
 .pod.empty .pname{color:var(--mut);font-weight:600}
 .p1 .crown{display:block;font-size:clamp(1.3rem,2.4vw,2rem);line-height:1;margin-bottom:.15em;animation:bob 2.6s ease-in-out infinite}
 
-/* List */
-.list{list-style:none;margin:0 auto;padding:0;max-width:1000px;display:grid;gap:8px}
+/* Everyone from 6th place down */
+.pack{max-width:1240px;margin:0 auto}
+.pack-title{display:flex;align-items:center;gap:14px;margin:0 0 14px;font:800 clamp(1.1rem,1.8vw,1.5rem)/1.2 var(--serif);color:var(--g2)}
+.pack-title::before,.pack-title::after{content:"";flex:1;height:1px;background:linear-gradient(90deg,transparent,rgba(255,215,120,.4),transparent)}
+.list{list-style:none;margin:0;padding:0;display:grid;gap:10px clamp(12px,2vw,24px)}
+.list.two{grid-template-columns:1fr 1fr;grid-auto-flow:column}
 .row{
-  display:grid;grid-template-columns:2.6em minmax(0,1.3fr) minmax(0,1fr) 6.2em 5.6em;gap:.9em;align-items:center;
-  padding:.62em .9em;border:1px solid var(--line);border-radius:14px;background:rgba(255,215,120,.045);
+  display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:clamp(10px,1.2vw,18px);align-items:center;
+  padding:clamp(10px,1vw,14px) clamp(12px,1.3vw,20px);border:1px solid rgba(255,215,120,.22);border-radius:16px;
+  background:linear-gradient(90deg,rgba(255,215,120,.1),rgba(255,215,120,.03));
 }
-.row .rk{font:800 1.1em/1 var(--serif);color:var(--mut);text-align:center}
-.row .nm{font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.bar{height:.72em;border-radius:99px;background:rgba(255,215,120,.09);overflow:hidden}
-.bar i{display:block;height:100%;border-radius:99px;background:linear-gradient(180deg,var(--g1),var(--g3) 60%,var(--g4));box-shadow:0 0 12px rgba(255,200,80,.35);transition:width .9s cubic-bezier(.2,.8,.2,1)}
-.row .val{font:800 1.15em/1 var(--serif);color:var(--g2);text-align:right;font-variant-numeric:tabular-nums}
-.pf{text-align:right;font-variant-numeric:tabular-nums;font-size:.86em;font-weight:600}
+.row .rk{
+  width:2.3em;height:2.3em;border-radius:50%;display:grid;place-items:center;flex:none;
+  font:800 1.05em/1 var(--serif);color:var(--g1);font-variant-numeric:tabular-nums;
+  border:2px solid rgba(255,215,120,.55);background:rgba(255,215,120,.08);
+}
+.row .nm{font-weight:700;font-size:1.28em;line-height:1.2;color:#fff8e6;overflow-wrap:anywhere}
+.row .num{text-align:right;line-height:1.1}
+.row .val{display:block;font:800 1.3em/1.1 var(--serif);color:var(--g2);font-variant-numeric:tabular-nums;white-space:nowrap}
+.pf{display:block;font-variant-numeric:tabular-nums;font-size:.8em;font-weight:600;white-space:nowrap;margin-top:2px}
 .pos{color:var(--pos)}.neg{color:var(--neg)}
 .fresh{animation:fresh 2.6s ease-out}
 @keyframes fresh{0%{box-shadow:0 0 0 0 rgba(255,217,112,.9);background:rgba(255,217,112,.28)}100%{box-shadow:0 0 0 18px rgba(255,217,112,0)}}
@@ -136,12 +153,22 @@ h1{
   background:linear-gradient(100deg,var(--g3),var(--g1) 40%,#fff 50%,var(--g1) 60%,var(--g3));background-size:250% 100%;-webkit-background-clip:text;background-clip:text;color:transparent;animation:shimmer 2.5s linear infinite}
 .cele-line{font-size:clamp(1rem,2vw,1.6rem);color:var(--ink)}
 
+@media (max-width:1000px){
+  .list.two{grid-template-columns:1fr;grid-auto-flow:row;grid-template-rows:none!important}
+}
 @media (max-width:700px){
-  .row{grid-template-columns:2em minmax(0,1fr) auto auto;gap:.6em}
-  .row .bar{display:none}
   .stat b{font-size:1.3em}
   .stat span{letter-spacing:.06em}
-  .podium{gap:6px}
+  /* Phones: top 3 on the podium, 4 and 5 as cards underneath */
+  .podium{grid-template-columns:repeat(6,1fr);grid-template-areas:"p2 p2 p1 p1 p3 p3" "p4 p4 p4 p5 p5 p5";gap:10px 6px}
+  .p4,.p5{display:grid;grid-template-columns:auto 1fr;align-items:center;text-align:left;border:1px solid rgba(255,215,120,.3);border-radius:14px;padding:8px 10px;background:rgba(255,215,120,.07)}
+  .p4 .who,.p5 .who{display:contents}
+  .p4 .medal,.p5 .medal{grid-row:1/4;width:38px;margin:0 10px 0 0;font-size:1rem}
+  .p4 .pprofit,.p5 .pprofit,.p4 .block,.p5 .block{display:none}
+  .row .nm{font-size:1.1em}
+  .pname{font-size:.95rem;overflow-wrap:break-word}
+  .p1 .pname{font-size:1.05rem}
+  .pval{font-size:1.1rem}
 }
 /* Reduced motion: stop the endless loops, keep the one-off celebration */
 html.calm h1,html.calm .medal,html.calm .crown,html.calm .block::after,html.calm .live.on i,html.calm .vault .lock,html.calm .cele-name{animation:none!important}
@@ -312,6 +339,8 @@ function flip(update) {
   });
 }
 
+const STAGE = 5; // places shown on the stage
+const PACK_TITLE = pick(["Hot on their heels", "The chasing pack", "Still very much in it", "Polishing their coins"]);
 const profitHtml = (p) => `<span class="${p >= 0 ? "pos" : "neg"}">${fmtSigned(p)}</span>`;
 
 function podiumSlot(s, place) {
@@ -349,17 +378,18 @@ function render() {
   } else if (!n) {
     board.innerHTML = `<div class="empty-state"><b>The vault is empty.</b>Suspiciously empty. Hand in your answer sheet to get on the board.</div>`;
   } else {
-    const maxV = ranked[0].value || 1;
     flip(() => {
-      board.innerHTML = `<div class="podium">${podiumSlot(ranked[1], 2)}${podiumSlot(ranked[0], 1)}${podiumSlot(ranked[2], 3)}</div>
-      ${n > 3 ? `<ol class="list">${ranked.slice(3).map((s, k) => `
+      const rest = ranked.slice(STAGE);
+      const two = rest.length >= 8;
+      board.innerHTML = `<div class="podium">${[4, 2, 1, 3, 5].map((p) => podiumSlot(ranked[p - 1], p)).join("")}</div>
+      ${rest.length ? `<section class="pack">
+        <h2 class="pack-title">${PACK_TITLE}</h2>
+        <ol class="list${two ? " two" : ""}"${two ? ` style="grid-template-rows:repeat(${Math.ceil(rest.length / 2)},auto)"` : ""}>${rest.map((s, k) => `
         <li class="row" data-id="${s.id}">
-          <span class="rk">${k + 4}</span>
+          <span class="rk">${k + STAGE + 1}</span>
           <span class="nm">${esc(s.team)}</span>
-          <span class="bar"><i style="width:${Math.max(2, (100 * s.value) / maxV).toFixed(1)}%"></i></span>
-          <span class="val"><span data-count="${s.id}">${fmt(s.value)}</span></span>
-          <span class="pf">${profitHtml(s.profit)}</span>
-        </li>`).join("")}</ol>` : ""}`;
+          <span class="num"><span class="val"><span data-count="${s.id}">${fmt(s.value)}</span></span><span class="pf">${profitHtml(s.profit)}</span></span>
+        </li>`).join("")}</ol></section>` : ""}`;
     });
     // count-up numbers & fresh highlights
     ranked.forEach((s) => {
