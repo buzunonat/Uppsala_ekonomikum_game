@@ -9,7 +9,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="style.css?v=4">
+<link rel="stylesheet" href="style.css?v=5">
 </head>
 <body>
 <main class="wide">
@@ -42,14 +42,8 @@
     <div class="card" id="formCard">
       <form id="sheet" autocomplete="off">
         <div class="sheethead">
-          <div>
-            <label for="team" id="formTitle">Team name</label>
-            <input type="text" id="team" maxlength="40" spellcheck="false" placeholder="e.g. The Golden Retrievers">
-          </div>
-          <div class="btns">
-            <button type="submit" id="saveBtn">Save sheet</button>
-            <button type="button" class="sec" id="clearBtn">Clear</button>
-          </div>
+          <label for="team" id="formTitle">Team name</label>
+          <input type="text" id="team" maxlength="40" spellcheck="false" placeholder="e.g. The Golden Retrievers">
         </div>
         <div class="hint" id="teamHint"></div>
         <ul class="howto">
@@ -62,6 +56,8 @@
         <div class="sheetfoot">
           <span class="msg" id="formMsg" role="status"></span>
           <span class="total">Total invested <b id="total">0</b> coins</span>
+          <button type="button" class="sec" id="clearBtn">Clear</button>
+          <button type="submit" id="saveBtn"><span id="saveLabel">Save sheet</span> <kbd class="onbtn">Ctrl ↵</kbd></button>
         </div>
       </form>
     </div>
@@ -129,12 +125,12 @@ function buildRows() {
       <div class="lbl"><b><span class="check" aria-hidden="true">✓</span>${a}s</b><small id="sum${i}">—</small></div>
       <div class="seg years" id="yg${i}" tabindex="0" role="radiogroup" aria-label="${a}s year">
         <span class="pre" aria-hidden="true">${String(a).slice(0, 3)}</span>
-        ${Array.from({ length: 10 }, (_, k) => `<button type="button" class="chip" tabindex="-1" role="radio" aria-checked="false" aria-label="${a + k}" data-i="${i}" data-y="${a + k}">${k}</button>`).join("")}
+        ${Array.from({ length: 10 }, (_, k) => `<button type="button" class="chip" tabindex="-1" role="radio" aria-checked="false" aria-label="${a + k}" data-i="${i}" data-y="${a + k}"><span class="cap">${k}</span></button>`).join("")}
       </div>
       <div class="seg months" id="mg${i}" tabindex="0" role="radiogroup" aria-label="${a}s month">
-        ${MONTHS.map((m, k) => `<button type="button" class="chip" tabindex="-1" role="radio" aria-checked="false" title="Type ${k === 0 ? "01" : k + 1}" data-i="${i}" data-m="${k + 1}">${m}</button>`).join("")}
+        ${MONTHS.map((m, k) => `<button type="button" class="chip" tabindex="-1" role="radio" aria-checked="false" title="Type ${k === 0 ? "01" : k + 1}" data-i="${i}" data-m="${k + 1}"><kbd class="k">${k === 0 ? "01" : k + 1}</kbd><span>${m}</span></button>`).join("")}
       </div>
-      <label class="coinbox"><input type="text" class="coins" id="a${i}" inputmode="numeric" placeholder="0" aria-label="${a}s coins" maxlength="7"><span>coins</span></label>
+      <label class="coinbox"><input type="text" class="coins" id="a${i}" inputmode="numeric" placeholder="0" aria-label="${a}s coins" maxlength="7"><span>coins</span><kbd class="enter" aria-hidden="true">↵</kbd></label>
     </div>`).join("");
 
   DECADES.forEach((_, i) => {
@@ -272,7 +268,7 @@ function startEdit(id) {
   editingId = id;
   fillForm(s);
   $("formTitle").textContent = "Editing “" + s.team + "”";
-  $("saveBtn").textContent = "Save changes";
+  $("saveLabel").textContent = "Save changes";
   $("clearBtn").textContent = "Cancel edit";
   $("formCard").classList.add("editing");
   msg("");
@@ -283,7 +279,7 @@ function resetForm() {
   editingId = null;
   fillForm(null);
   $("formTitle").textContent = "Team name";
-  $("saveBtn").textContent = "Save sheet";
+  $("saveLabel").textContent = "Save sheet";
   $("clearBtn").textContent = "Clear";
   $("formCard").classList.remove("editing");
   $("team").focus();

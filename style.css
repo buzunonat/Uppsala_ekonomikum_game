@@ -58,10 +58,7 @@ button.sm{min-height:30px;padding:4px 10px;font-size:.82rem}
 .field{margin-bottom:14px}
 
 /* Sheet header */
-.sheethead{display:grid;grid-template-columns:1fr auto;gap:12px;align-items:end}
 .sheethead input{font-size:1.15rem;font-weight:600;min-height:50px}
-.sheethead .btns{display:flex;gap:8px}
-.sheethead button{min-height:50px}
 .hint{font-size:.85rem;min-height:1.3em;margin-top:4px}
 .howto{display:flex;flex-wrap:wrap;gap:6px 18px;font-size:.82rem;color:var(--mut);margin:6px 0 14px;padding:0;list-style:none}
 .howto li{white-space:nowrap}
@@ -85,7 +82,16 @@ kbd{display:inline-block;min-width:1.5em;text-align:center;font:600 .74rem/1 ui-
 .seg .chip:hover{background:color-mix(in srgb,var(--acc) 14%,transparent)}
 .seg .chip[aria-checked="true"]{background:var(--acc);color:var(--acc-fg);box-shadow:0 1px 3px rgba(80,50,0,.25)}
 .seg.pending .chip[aria-checked="true"]{background:transparent;color:var(--fg);box-shadow:inset 0 0 0 2px var(--acc)}
-.seg.months .chip{font-size:.85rem}
+/* Key hints: year digits look like keycaps, months show the number to type */
+.seg.years .chip{background:var(--surface);box-shadow:inset 0 -2px 0 var(--line2);margin:1px 0}
+.seg.years .chip[aria-checked="true"]{background:var(--acc);color:var(--acc-fg);box-shadow:inset 0 -2px 0 rgba(0,0,0,.22),0 1px 3px rgba(80,50,0,.25)}
+.seg.months .chip{font-size:.85rem;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;min-height:46px;padding:3px 0}
+.seg .chip kbd.k{font-size:.6rem;min-width:1.7em;padding:2px 3px;color:var(--mut);font-weight:600}
+.seg .chip[aria-checked="true"] kbd.k{background:rgba(255,255,255,.35);border-color:rgba(0,0,0,.2);color:var(--acc-fg)}
+.seg.pending .chip[aria-checked="true"] kbd.k{background:var(--surface);color:var(--fg)}
+.coinbox kbd.enter{display:none;margin-left:8px;font-size:.7rem}
+.coinbox:focus-within kbd.enter{display:inline-block}
+kbd.onbtn{margin-left:6px;font-size:.66rem;background:rgba(0,0,0,.1);border-color:rgba(0,0,0,.22);color:var(--acc-fg);vertical-align:1px}
 
 /* Coins */
 .coinbox{display:flex;align-items:center;background:var(--bg);border:1px solid var(--line2);border-radius:11px;padding:0 12px 0 4px;margin:0;cursor:text}
@@ -93,8 +99,10 @@ kbd{display:inline-block;min-width:1.5em;text-align:center;font:600 .74rem/1 ui-
 .coinbox input{border:0!important;box-shadow:none!important;background:transparent!important;text-align:right;font-size:1.15rem;font-weight:700;font-variant-numeric:tabular-nums;padding:8px 6px;min-height:42px;width:100%}
 .coinbox span{font-size:.8rem;color:var(--mut);font-weight:500;letter-spacing:0;margin:0}
 
-.sheetfoot{display:flex;align-items:center;gap:12px;margin-top:14px}
-.total{margin-left:auto;color:var(--mut);white-space:nowrap}
+.sheetfoot{display:flex;align-items:center;gap:10px;margin-top:16px;flex-wrap:wrap}
+.sheetfoot button{min-height:50px}
+.sheetfoot #saveBtn{padding:10px 22px;font-size:1.02rem}
+.total{margin-left:auto;margin-right:8px;color:var(--mut);white-space:nowrap}
 .total b{color:var(--fg);font-size:1.1rem}
 
 /* Entries */
@@ -135,7 +143,9 @@ tr.flash td{animation:flash 2.2s ease-out}
   .dec .years,.dec .months{grid-column:1/-1}
 }
 @media (max-width:560px){
-  .sheethead{grid-template-columns:1fr}
+  .sheetfoot .total{flex-basis:100%;text-align:right;margin-right:0}
+  .sheetfoot button{flex:1}
+  kbd.onbtn{display:none}
   .seg.months{flex-wrap:wrap}
   .seg.months .chip{flex:1 1 calc(100%/6 - 2px)}
   .seg .pre{padding:0 6px 0 4px;font-size:.85rem}
