@@ -9,7 +9,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="style.css?v=5">
+<link rel="stylesheet" href="style.css?v=6">
 </head>
 <body>
 <main class="wide">
@@ -124,11 +124,10 @@ function buildRows() {
     <div class="dec" id="dec${i}">
       <div class="lbl"><b><span class="check" aria-hidden="true">✓</span>${a}s</b><small id="sum${i}">—</small></div>
       <div class="seg years" id="yg${i}" tabindex="0" role="radiogroup" aria-label="${a}s year">
-        <span class="pre" aria-hidden="true">${String(a).slice(0, 3)}</span>
-        ${Array.from({ length: 10 }, (_, k) => `<button type="button" class="chip" tabindex="-1" role="radio" aria-checked="false" aria-label="${a + k}" data-i="${i}" data-y="${a + k}"><span class="cap">${k}</span></button>`).join("")}
+        ${Array.from({ length: 10 }, (_, k) => `<button type="button" class="chip" tabindex="-1" role="radio" aria-checked="false" aria-label="${a + k}" data-i="${i}" data-y="${a + k}"><kbd class="k">${k}</kbd><span class="v">&#39;${String(a + k).slice(2)}</span></button>`).join("")}
       </div>
       <div class="seg months" id="mg${i}" tabindex="0" role="radiogroup" aria-label="${a}s month">
-        ${MONTHS.map((m, k) => `<button type="button" class="chip" tabindex="-1" role="radio" aria-checked="false" title="Type ${k === 0 ? "01" : k + 1}" data-i="${i}" data-m="${k + 1}"><kbd class="k">${k === 0 ? "01" : k + 1}</kbd><span>${m}</span></button>`).join("")}
+        ${MONTHS.map((m, k) => `<button type="button" class="chip" tabindex="-1" role="radio" aria-checked="false" title="Type ${k === 0 ? "01" : k + 1}" data-i="${i}" data-m="${k + 1}"><kbd class="k">${k === 0 ? "01" : k + 1}</kbd><span class="v">${m}</span></button>`).join("")}
       </div>
       <label class="coinbox"><input type="text" class="coins" id="a${i}" inputmode="numeric" placeholder="0" aria-label="${a}s coins" maxlength="7"><span>coins</span><kbd class="enter" aria-hidden="true">↵</kbd></label>
     </div>`).join("");
