@@ -122,6 +122,8 @@ h1{
 .ticker span.out{opacity:0;transform:translateY(8px)}
 .ticker b{color:var(--g2)}
 .rules{max-width:1000px;margin:clamp(20px,3vw,34px) auto 0;color:var(--mut);font-size:.78em;text-align:center}
+.staff{display:block;width:max-content;margin:1.2em auto 0;font-size:.72em;color:var(--mut);opacity:.45;text-decoration:none}
+.staff:hover,.staff:focus-visible{opacity:1;text-decoration:underline}
 
 /* Celebration */
 .cele{position:fixed;inset:0;z-index:5;display:grid;place-items:center;pointer-events:none;opacity:0;transition:opacity .35s;padding:16px}
@@ -164,6 +166,7 @@ html.calm h1,html.calm .medal,html.calm .crown,html.calm .block::after,html.calm
   <section id="board" aria-live="polite"></section>
 
   <p class="rules">Value = coins × (gold price in your month ÷ gold price at the start of that decade), inflation-adjusted. Profit = value − coins invested.</p>
+  <a class="staff" href="clerk.html">Clerk desk</a>
 </main>
 
 <div class="ticker" aria-hidden="true"><span id="tick"></span></div>

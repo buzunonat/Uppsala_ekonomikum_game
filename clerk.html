@@ -6,16 +6,22 @@
 <meta name="robots" content="noindex">
 <title>Ekonomikumfesten · Clerk desk</title>
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>✏️</text></svg>">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
 <main class="wide">
   <div class="top">
     <div>
-      <h1>Clerk desk</h1>
-      <p class="sub">Enter each team's answer sheet. <a href="./" target="_blank">Open leaderboard ↗</a></p>
+      <h1>Clerk desk<span class="dot">.</span></h1>
+      <p class="sub">Den stora Ekonomikumfesten · answer sheet entry</p>
     </div>
-    <span class="live" id="live"><i></i> Connecting…</span>
+    <div class="toplinks">
+      <span class="live" id="live"><i></i> Connecting…</span>
+      <a href="./">Leaderboard →</a>
+    </div>
   </div>
 
   <!-- Passcode gate -->
@@ -35,40 +41,37 @@
     <!-- Entry form -->
     <div class="card" id="formCard">
       <form id="sheet" autocomplete="off">
-        <div class="teamrow">
+        <div class="sheethead">
           <div>
-            <label for="team" id="formTitle">New answer sheet: team name</label>
-            <input type="text" id="team" maxlength="40" spellcheck="false">
+            <label for="team" id="formTitle">Team name</label>
+            <input type="text" id="team" maxlength="40" spellcheck="false" placeholder="e.g. The Golden Retrievers">
           </div>
-          <div class="actions" style="margin:0">
+          <div class="btns">
             <button type="submit" id="saveBtn">Save sheet</button>
             <button type="button" class="sec" id="clearBtn">Clear</button>
           </div>
         </div>
         <div class="hint" id="teamHint"></div>
-        <p class="keys">
-          <kbd>Enter</kbd> next field ·
-          Year: type <kbd>0</kbd>–<kbd>9</kbd> ·
-          Month: <kbd>2</kbd>–<kbd>9</kbd>, <kbd>1</kbd><kbd>0</kbd> <kbd>1</kbd><kbd>1</kbd> <kbd>1</kbd><kbd>2</kbd>, January = <kbd>0</kbd><kbd>1</kbd> ·
-          <kbd>←</kbd><kbd>→</kbd> adjust · <kbd>Ctrl</kbd>+<kbd>Enter</kbd> save · <kbd>Esc</kbd> clear
-        </p>
-        <div class="colhead"><span>Decade</span><span>Year</span><span>Month</span><span style="text-align:right">Coins</span></div>
-        <div id="rows"></div>
-        <div class="actions">
-          <span class="msg" id="formMsg" role="status" style="margin:0"></span>
-          <span class="total">Total invested: <b id="total">0</b> coins</span>
+        <ul class="howto">
+          <li>Year: last digit <kbd>5</kbd> → 1975</li>
+          <li>Month: number <kbd>3</kbd> → Mar · <kbd>0</kbd><kbd>1</kbd> → Jan</li>
+          <li><kbd>Enter</kbd> next decade</li>
+          <li><kbd>Ctrl</kbd>+<kbd>Enter</kbd> save · <kbd>Esc</kbd> clear</li>
+        </ul>
+        <div class="decs" id="rows"></div>
+        <div class="sheetfoot">
+          <span class="msg" id="formMsg" role="status"></span>
+          <span class="total">Total invested <b id="total">0</b> coins</span>
         </div>
       </form>
     </div>
 
     <!-- Entries -->
     <div class="card">
-      <div class="top" style="margin-bottom:10px">
-        <h2 style="margin:0">Entries (<span id="count">0</span>)</h2>
-        <div style="display:flex;gap:14px;align-items:center;flex-wrap:wrap">
-          <input type="text" id="search" class="search" placeholder="Find team…" aria-label="Find team">
-          <label class="toggle"><input type="checkbox" id="hideScores"> Hide scores on leaderboard</label>
-        </div>
+      <div class="listhead">
+        <h2>Entries <span class="badge" id="count">0</span></h2>
+        <input type="text" id="search" class="search" placeholder="Find team…" aria-label="Find team">
+        <label class="switch"><input type="checkbox" id="hideScores"><span class="track"></span> Hide scores on leaderboard</label>
       </div>
       <div class="scroll">
         <table>
@@ -123,14 +126,15 @@ const yg = (i) => $("yg" + i), mg = (i) => $("mg" + i), coin = (i) => $("a" + i)
 function buildRows() {
   $("rows").innerHTML = DECADES.map(([a], i) => `
     <div class="dec" id="dec${i}">
-      <div class="lbl"><b>${a}s</b><small id="sum${i}">—</small></div>
-      <div class="chips years" id="yg${i}" tabindex="0" role="radiogroup" aria-label="${a}s year">
-        ${Array.from({ length: 10 }, (_, k) => `<button type="button" class="chip" tabindex="-1" role="radio" aria-checked="false" data-i="${i}" data-y="${a + k}"><sup>${k}</sup>'${String(a + k).slice(2)}</button>`).join("")}
+      <div class="lbl"><b><span class="check" aria-hidden="true">✓</span>${a}s</b><small id="sum${i}">—</small></div>
+      <div class="seg years" id="yg${i}" tabindex="0" role="radiogroup" aria-label="${a}s year">
+        <span class="pre" aria-hidden="true">${String(a).slice(0, 3)}</span>
+        ${Array.from({ length: 10 }, (_, k) => `<button type="button" class="chip" tabindex="-1" role="radio" aria-checked="false" aria-label="${a + k}" data-i="${i}" data-y="${a + k}">${k}</button>`).join("")}
       </div>
-      <div class="chips months" id="mg${i}" tabindex="0" role="radiogroup" aria-label="${a}s month">
-        ${MONTHS.map((m, k) => `<button type="button" class="chip" tabindex="-1" role="radio" aria-checked="false" data-i="${i}" data-m="${k + 1}"><sup>${k + 1}</sup>${m}</button>`).join("")}
+      <div class="seg months" id="mg${i}" tabindex="0" role="radiogroup" aria-label="${a}s month">
+        ${MONTHS.map((m, k) => `<button type="button" class="chip" tabindex="-1" role="radio" aria-checked="false" title="Type ${k === 0 ? "01" : k + 1}" data-i="${i}" data-m="${k + 1}">${m}</button>`).join("")}
       </div>
-      <input type="text" class="coins" id="a${i}" inputmode="numeric" placeholder="0" aria-label="${a}s coins" maxlength="7">
+      <label class="coinbox"><input type="text" class="coins" id="a${i}" inputmode="numeric" placeholder="0" aria-label="${a}s coins" maxlength="7"><span>coins</span></label>
     </div>`).join("");
 
   DECADES.forEach((_, i) => {
@@ -163,7 +167,7 @@ function paint(i) {
   mg(i).classList.toggle("pending", !!monthBuf[i]);
   const c = coin(i).value;
   const when = s.y && s.m ? MONTHS[s.m - 1] + " " + s.y : s.y ? "? " + s.y : s.m ? MONTHS[s.m - 1] + " ?" : "";
-  $("sum" + i).textContent = when || c ? `${when || "—"}${c ? " · " + c + " 🪙" : ""}` : "—";
+  $("sum" + i).textContent = when || c ? `${when || "—"}${c ? " · " + c + (c === "1" ? " coin" : " coins") : ""}` : "Not filled in";
   $("dec" + i).classList.toggle("done", !!(s.y && s.m && c !== ""));
 }
 
@@ -267,7 +271,7 @@ function startEdit(id) {
   if (!s) return;
   editingId = id;
   fillForm(s);
-  $("formTitle").textContent = "Editing: " + s.team;
+  $("formTitle").textContent = "Editing “" + s.team + "”";
   $("saveBtn").textContent = "Save changes";
   $("clearBtn").textContent = "Cancel edit";
   $("formCard").classList.add("editing");
@@ -278,7 +282,7 @@ function startEdit(id) {
 function resetForm() {
   editingId = null;
   fillForm(null);
-  $("formTitle").textContent = "New answer sheet: team name";
+  $("formTitle").textContent = "Team name";
   $("saveBtn").textContent = "Save sheet";
   $("clearBtn").textContent = "Clear";
   $("formCard").classList.remove("editing");
@@ -323,7 +327,7 @@ function renderList() {
     ? ranked.map((s) => `<tr class="${flashKey && teamKey(s.team) === flashKey ? "flash" : ""}">
         <td class="mut">${s.rank}</td>
         <td class="team">${esc(s.team)}</td>
-        <td class="picks">${s.parts.map((p) => `${monthLabel(p.date)} · ${p.amt}`).join(" &nbsp;|&nbsp; ")}</td>
+        <td><div class="picks">${s.parts.map((p) => `<span class="pick">${monthLabel(p.date)} · <b>${p.amt}</b></span>`).join("")}</div></td>
         <td class="n">${fmt(s.value)}</td>
         <td class="n"><button class="sec sm" data-edit="${s.id}">Edit</button> <button class="danger sm" data-del="${s.id}">Delete</button></td>
       </tr>`).join("")
