@@ -26,3 +26,7 @@ To wipe all entries before the real event, run this in the Supabase SQL Editor:
 ```sql
 delete from public.submissions;
 ```
+
+## Updating the site
+
+When you change `style.css` or `app.js`, bump the `?v=` number where the HTML files link them (for example `style.css?v=4` becomes `style.css?v=5`). Otherwise browsers may keep the old file for a while and the page looks broken.
