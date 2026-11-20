@@ -4,6 +4,9 @@ Library quiz game: for each decade (1970s–2010s) a team picks the month they t
 
 - **`index.html`**: public leaderboard (put it on the big screen, share the link or a QR code). Updates live.
 - **`clerk.html`**: data-entry desk for the organizers. Needs the clerk passcode. Clerks can add, edit and delete entries, and hide scores until the reveal.
+  - Fast keyboard entry: team name → <kbd>Enter</kbd> → year digit (`5` = 1975) → month (`3` = Mar, `12` = Dec, `01` = Jan) → coins → <kbd>Enter</kbd> to the next decade. <kbd>Enter</kbd> on the last coins box saves. <kbd>Esc</kbd> clears. Chips can also be clicked.
+  - A decade with 0 coins needs no year/month.
+- Leaderboard extras: podium celebration when someone breaks into the top 3 (once there are 5+ teams), and a "vault open" reveal when scores are un-hidden. Add `?motion=full` to the leaderboard URL to force all animations on a PC with "reduce motion" enabled.
 - **`real-gold-price.csv`**: monthly inflation-adjusted gold prices, 1970–2019.
 - **`gold_peak_game_final.html`**: the original rules prototype.
 

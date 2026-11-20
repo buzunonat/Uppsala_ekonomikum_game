@@ -3,83 +3,402 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#120d05">
 <title>Gold Peak Leaderboard</title>
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🪙</text></svg>">
-<link rel="stylesheet" href="style.css">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600;9..144,800;9..144,900&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#120d05;--bg2:#2a1d07;--ink:#f8ecd0;--mut:#bfa978;--line:rgba(255,215,120,.16);
+  --g1:#fff3c4;--g2:#ffd970;--g3:#e2a92b;--g4:#a8730b;--g5:#6b4605;
+  --silver1:#f4f6f9;--silver2:#b9c0c9;--silver3:#7e8691;
+  --bronze1:#ffd2ac;--bronze2:#d08a55;--bronze3:#8c4f25;
+  --pos:#9be37a;--neg:#ff9a8a;
+  --serif:"Fraunces",Georgia,serif;--sans:"Inter",system-ui,-apple-system,"Segoe UI",sans-serif;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+html,body{margin:0;min-height:100%}
+body{
+  background:radial-gradient(1200px 700px at 50% -10%,#4a3309 0%,var(--bg2) 35%,var(--bg) 75%) fixed,var(--bg);
+  color:var(--ink);font:500 clamp(15px,.55vw + 10px,22px)/1.45 var(--sans);overflow-x:hidden;
+}
+canvas#fx{position:fixed;inset:0;width:100%;height:100%;pointer-events:none;z-index:6}
+main{position:relative;z-index:2;max-width:1280px;margin:0 auto;padding:clamp(18px,3vw,40px) 16px 110px}
+
+/* Header */
+header{text-align:center;margin-bottom:clamp(14px,2.4vw,30px)}
+.kicker{font-size:.78em;letter-spacing:.32em;text-transform:uppercase;color:var(--mut);margin-bottom:.3em}
+h1{
+  font:900 clamp(2.3rem,7vw,5.6rem)/1 var(--serif);margin:0;letter-spacing:-.02em;
+  background:linear-gradient(100deg,var(--g4) 0%,var(--g2) 25%,var(--g1) 45%,#fff 50%,var(--g1) 55%,var(--g2) 75%,var(--g4) 100%);
+  background-size:250% 100%;-webkit-background-clip:text;background-clip:text;color:transparent;
+  animation:shimmer 7s linear infinite;filter:drop-shadow(0 4px 18px rgba(255,190,60,.25));
+}
+@keyframes shimmer{from{background-position:120% 0}to{background-position:-130% 0}}
+.tag{margin:.55em auto 0;color:var(--mut);max-width:44em}
+.live{display:inline-flex;align-items:center;gap:7px;font-size:.78em;color:var(--mut);margin-top:.6em}
+.live i{width:9px;height:9px;border-radius:50%;background:var(--mut);display:inline-block}
+.live.on i{background:var(--pos);box-shadow:0 0 0 0 rgba(155,227,122,.6);animation:ping 2s infinite}
+@keyframes ping{70%{box-shadow:0 0 0 9px rgba(155,227,122,0)}100%{box-shadow:0 0 0 0 rgba(155,227,122,0)}}
+
+/* Stats */
+.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:clamp(8px,1.4vw,18px);margin:0 auto clamp(18px,3vw,36px);max-width:900px}
+.stat{border:1px solid var(--line);background:linear-gradient(180deg,rgba(255,215,120,.08),rgba(255,215,120,.02));border-radius:16px;padding:.7em .9em;text-align:center}
+.stat span{display:block;font-size:.68em;letter-spacing:.14em;text-transform:uppercase;color:var(--mut)}
+.stat b{display:block;font:800 1.7em/1.15 var(--serif);color:var(--g2);font-variant-numeric:tabular-nums}
+
+/* Podium */
+.podium{display:grid;grid-template-columns:1fr 1.15fr 1fr;align-items:end;gap:clamp(8px,1.6vw,22px);max-width:1000px;margin:0 auto clamp(18px,3vw,34px)}
+.pod{text-align:center;min-width:0}
+.pod .who{padding:0 .3em .6em}
+.medal{
+  --a:var(--g1);--b:var(--g3);--c:var(--g5);
+  width:clamp(52px,6vw,84px);aspect-ratio:1;border-radius:50%;margin:0 auto .45em;display:grid;place-items:center;
+  font:900 clamp(1.4rem,2.6vw,2.2rem)/1 var(--serif);color:var(--c);
+  background:radial-gradient(circle at 32% 28%,var(--a),var(--b) 55%,var(--c));
+  box-shadow:inset 0 0 0 4px rgba(255,255,255,.18),inset 0 -6px 10px rgba(0,0,0,.25),0 8px 22px rgba(0,0,0,.45);
+  animation:bob 3.2s ease-in-out infinite;
+}
+.p2 .medal{--a:var(--silver1);--b:var(--silver2);--c:var(--silver3);animation-delay:-1s}
+.p3 .medal{--a:var(--bronze1);--b:var(--bronze2);--c:var(--bronze3);animation-delay:-2s}
+@keyframes bob{50%{transform:translateY(-6px) rotate(-4deg)}}
+.pname{font:800 clamp(1.05rem,2.2vw,1.9rem)/1.15 var(--serif);overflow-wrap:anywhere}
+.p1 .pname{font-size:clamp(1.25rem,2.8vw,2.4rem);color:var(--g1)}
+.pval{font:800 clamp(1.2rem,2.4vw,2.1rem)/1.2 var(--serif);color:var(--g2);font-variant-numeric:tabular-nums;margin-top:.15em}
+.pprofit{font-size:.82em;font-weight:600}
+.block{
+  border-radius:14px 14px 4px 4px;position:relative;overflow:hidden;
+  background:linear-gradient(180deg,var(--g2),var(--g3) 45%,var(--g4));
+  box-shadow:inset 0 2px 0 rgba(255,255,255,.45),inset 0 -10px 18px rgba(0,0,0,.25),0 12px 30px rgba(0,0,0,.4);
+  display:grid;place-items:center;font:900 clamp(2rem,5vw,4.2rem)/1 var(--serif);color:rgba(80,50,0,.45);
+}
+.p1 .block{height:clamp(110px,15vw,200px)}
+.p2 .block{height:clamp(80px,10.5vw,145px);background:linear-gradient(180deg,var(--silver1),var(--silver2) 50%,var(--silver3));color:rgba(40,45,55,.45)}
+.p3 .block{height:clamp(62px,8vw,110px);background:linear-gradient(180deg,var(--bronze1),var(--bronze2) 50%,var(--bronze3));color:rgba(70,30,5,.45)}
+.block::after{content:"";position:absolute;inset:0;background:linear-gradient(105deg,transparent 35%,rgba(255,255,255,.55) 50%,transparent 65%);transform:translateX(-120%);animation:shine 5.5s ease-in-out infinite}
+.p2 .block::after{animation-delay:1.6s}.p3 .block::after{animation-delay:3.2s}
+@keyframes shine{0%,60%{transform:translateX(-120%)}85%,100%{transform:translateX(120%)}}
+.pod.empty .medal{opacity:.25;animation:none}
+.pod.empty .pname{color:var(--mut);font-weight:600}
+.p1 .crown{display:block;font-size:clamp(1.3rem,2.4vw,2rem);line-height:1;margin-bottom:.15em;animation:bob 2.6s ease-in-out infinite}
+
+/* List */
+.list{list-style:none;margin:0 auto;padding:0;max-width:1000px;display:grid;gap:8px}
+.row{
+  display:grid;grid-template-columns:2.6em minmax(0,1.3fr) minmax(0,1fr) 6.2em 5.6em;gap:.9em;align-items:center;
+  padding:.62em .9em;border:1px solid var(--line);border-radius:14px;background:rgba(255,215,120,.045);
+}
+.row .rk{font:800 1.1em/1 var(--serif);color:var(--mut);text-align:center}
+.row .nm{font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.bar{height:.72em;border-radius:99px;background:rgba(255,215,120,.09);overflow:hidden}
+.bar i{display:block;height:100%;border-radius:99px;background:linear-gradient(180deg,var(--g1),var(--g3) 60%,var(--g4));box-shadow:0 0 12px rgba(255,200,80,.35);transition:width .9s cubic-bezier(.2,.8,.2,1)}
+.row .val{font:800 1.15em/1 var(--serif);color:var(--g2);text-align:right;font-variant-numeric:tabular-nums}
+.pf{text-align:right;font-variant-numeric:tabular-nums;font-size:.86em;font-weight:600}
+.pos{color:var(--pos)}.neg{color:var(--neg)}
+.fresh{animation:fresh 2.6s ease-out}
+@keyframes fresh{0%{box-shadow:0 0 0 0 rgba(255,217,112,.9);background:rgba(255,217,112,.28)}100%{box-shadow:0 0 0 18px rgba(255,217,112,0)}}
+.newtag{display:inline-block;margin-left:.5em;font-size:.6em;font-weight:800;letter-spacing:.08em;color:#2a1b00;background:var(--g2);border-radius:6px;padding:.15em .45em;vertical-align:middle}
+.coin-i{display:inline-block;width:.8em;height:.8em;border-radius:50%;background:radial-gradient(circle at 35% 30%,var(--g1),var(--g3) 60%,var(--g5));vertical-align:-.05em;margin-left:.25em;box-shadow:inset 0 0 0 1.5px rgba(255,255,255,.25)}
+
+.empty-state{text-align:center;padding:2.2em 1em;color:var(--mut);border:1px dashed var(--line);border-radius:18px;max-width:700px;margin:0 auto}
+.empty-state b{display:block;font:800 1.6em/1.2 var(--serif);color:var(--g2);margin-bottom:.3em}
+
+/* Vault (scores hidden) */
+.vault{max-width:1000px;margin:0 auto;text-align:center}
+.vault .lock{font-size:clamp(2.6rem,6vw,4.5rem);line-height:1;filter:drop-shadow(0 6px 18px rgba(255,190,60,.35));animation:bob 3s ease-in-out infinite}
+.vault h2{font:800 clamp(1.4rem,3vw,2.4rem)/1.2 var(--serif);color:var(--g2);margin:.3em 0 .2em}
+.vault p{color:var(--mut);margin:0 0 1.2em}
+.tiles{display:flex;flex-wrap:wrap;gap:10px;justify-content:center}
+.tile{border:1px solid rgba(255,215,120,.35);background:linear-gradient(180deg,rgba(255,215,120,.12),rgba(255,215,120,.03));border-radius:12px;padding:.5em .9em;font-weight:700;animation:pop .5s cubic-bezier(.2,1.4,.4,1) both}
+@keyframes pop{from{transform:scale(.6);opacity:0}}
+
+/* Ticker */
+.ticker{position:fixed;left:0;right:0;bottom:0;z-index:3;padding:.8em 16px calc(.8em + env(safe-area-inset-bottom,0px));text-align:center;
+  background:linear-gradient(0deg,rgba(18,13,5,.96),rgba(18,13,5,.75) 70%,transparent);color:var(--mut);font-size:.9em}
+.ticker span{display:inline-block;transition:opacity .5s,transform .5s}
+.ticker span.out{opacity:0;transform:translateY(8px)}
+.ticker b{color:var(--g2)}
+.rules{max-width:1000px;margin:clamp(20px,3vw,34px) auto 0;color:var(--mut);font-size:.78em;text-align:center}
+
+/* Celebration */
+.cele{position:fixed;inset:0;z-index:5;display:grid;place-items:center;pointer-events:none;opacity:0;transition:opacity .35s;padding:16px}
+.cele.on{opacity:1}
+.cele::before{content:"";position:absolute;inset:0;background:radial-gradient(circle at 50% 50%,rgba(70,48,8,.9),rgba(10,7,2,.96) 70%);-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px)}
+.cele-card{position:relative;text-align:center;max-width:min(92vw,1000px);transform:scale(.6) rotate(-3deg);transition:transform .7s cubic-bezier(.2,1.5,.35,1)}
+.cele.on .cele-card{transform:none}
+.cele-kick{display:inline-block;font:800 clamp(.9rem,1.6vw,1.3rem)/1 var(--sans);letter-spacing:.3em;color:#2a1b00;background:linear-gradient(180deg,var(--g1),var(--g3));padding:.55em 1em;border-radius:999px;box-shadow:0 8px 30px rgba(255,190,60,.4)}
+.cele-name{font:900 clamp(2.6rem,9vw,7.5rem)/1.02 var(--serif);margin:.25em 0 .15em;overflow-wrap:anywhere;
+  background:linear-gradient(100deg,var(--g3),var(--g1) 40%,#fff 50%,var(--g1) 60%,var(--g3));background-size:250% 100%;-webkit-background-clip:text;background-clip:text;color:transparent;animation:shimmer 2.5s linear infinite}
+.cele-line{font-size:clamp(1rem,2vw,1.6rem);color:var(--ink)}
+
+@media (max-width:700px){
+  .row{grid-template-columns:2em minmax(0,1fr) auto auto;gap:.6em}
+  .row .bar{display:none}
+  .stat b{font-size:1.3em}
+  .stat span{letter-spacing:.06em}
+  .podium{gap:6px}
+}
+/* Reduced motion: stop the endless loops, keep the one-off celebration */
+html.calm h1,html.calm .medal,html.calm .crown,html.calm .block::after,html.calm .live.on i,html.calm .vault .lock,html.calm .cele-name{animation:none!important}
+</style>
 </head>
 <body>
+<canvas id="fx" aria-hidden="true"></canvas>
 <main>
-  <div class="top">
-    <div>
-      <h1>Gold Peak Challenge</h1>
-      <p class="sub">Pick the month gold peaked in each decade. Invest your coins. Highest value wins.</p>
-    </div>
+  <header>
+    <div class="kicker">A golden party game</div>
+    <h1>Gold Peak Challenge</h1>
+    <p class="tag">Guess the month gold peaked in each decade. Invest your coins. Get gloriously rich (on paper).</p>
     <span class="live" id="live"><i></i> Connecting…</span>
-  </div>
+  </header>
 
-  <div class="stats">
+  <section class="stats" aria-label="Stats">
     <div class="stat"><span>Teams</span><b id="sTeams">–</b></div>
-    <div class="stat"><span>Coins invested</span><b id="sCoins">–</b></div>
-    <div class="stat"><span>Top value</span><b id="sTop">–</b></div>
-  </div>
+    <div class="stat"><span>Coins in play</span><b id="sCoins">–</b></div>
+    <div class="stat"><span>Richest team</span><b id="sTop">–</b></div>
+  </section>
 
-  <div class="banner hide" id="hiddenBanner">Scores are hidden until the big reveal. Here's who has signed up so far.</div>
+  <section id="board" aria-live="polite"></section>
 
-  <div class="card">
-    <h2>Leaderboard</h2>
-    <div class="scroll">
-      <table class="lb">
-        <thead id="lbHead"></thead>
-        <tbody id="lb"><tr><td class="empty" colspan="6">Loading…</td></tr></tbody>
-      </table>
-    </div>
-  </div>
-  <p class="mut small">Value = coins × (gold price in your month ÷ gold price at the start of that decade), using inflation-adjusted prices. “% of perfect” compares you to investing the same coins at each decade’s true peak.</p>
+  <p class="rules">Value = coins × (gold price in your month ÷ gold price at the start of that decade), inflation-adjusted. Profit = value − coins invested.</p>
 </main>
+
+<div class="ticker" aria-hidden="true"><span id="tick"></span></div>
+
+<div class="cele" id="cele" aria-live="assertive">
+  <div class="cele-card">
+    <div class="cele-kick" id="celeKick">NEW ON THE PODIUM</div>
+    <div class="cele-name" id="celeName"></div>
+    <div class="cele-line" id="celeLine"></div>
+  </div>
+</div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
 <script src="app.js"></script>
 <script>
-const lb = document.getElementById("lb"), head = document.getElementById("lbHead");
-let state = null, ready = false;
+// Add ?motion=full to the URL to force all animations on (some PCs have "reduce motion" switched on).
+const REDUCED = !/[?&]motion=full\b/.test(location.search) && matchMedia("(prefers-reduced-motion: reduce)").matches;
+if (REDUCED) document.documentElement.classList.add("calm");
+const board = document.getElementById("board");
+
+/* ================= Gold particle FX ================= */
+const FX = (() => {
+  const cv = document.getElementById("fx"), ctx = cv.getContext("2d");
+  let W = 0, H = 0, dpr = 1, parts = [];
+  function resize() { dpr = Math.min(2, devicePixelRatio || 1); W = innerWidth; H = innerHeight; cv.width = W * dpr; cv.height = H * dpr; ctx.setTransform(dpr, 0, 0, dpr, 0, 0); }
+  addEventListener("resize", resize); resize();
+
+  const rnd = (a, b) => a + Math.random() * (b - a);
+  function coin(x, y, vx, vy, g, r) { parts.push({ k: "c", x, y, vx, vy, g, r: r || rnd(9, 18), a: rnd(0, 6.28), va: rnd(.08, .22), life: 0, max: 600 }); }
+  function spark(x, y, s) { parts.push({ k: "s", x, y, s: s || rnd(1.5, 3.5), life: 0, max: rnd(50, 110) }); }
+
+  function drawCoin(p) {
+    const sx = Math.max(.12, Math.abs(Math.cos(p.a)));
+    ctx.save(); ctx.translate(p.x, p.y); ctx.scale(sx, 1);
+    const gr = ctx.createRadialGradient(-p.r * .35, -p.r * .4, p.r * .1, 0, 0, p.r);
+    const edge = Math.cos(p.a) > 0;
+    gr.addColorStop(0, "#fff6cf"); gr.addColorStop(.45, edge ? "#ffd24d" : "#f0b73a"); gr.addColorStop(1, "#9a6407");
+    ctx.fillStyle = gr; ctx.beginPath(); ctx.arc(0, 0, p.r, 0, 6.283); ctx.fill();
+    ctx.strokeStyle = "rgba(120,75,0,.55)"; ctx.lineWidth = p.r * .14; ctx.beginPath(); ctx.arc(0, 0, p.r * .72, 0, 6.283); ctx.stroke();
+    ctx.restore();
+  }
+  function drawSpark(p) {
+    const t = p.life / p.max, al = Math.sin(t * Math.PI), s = p.s * (1 + al);
+    ctx.save(); ctx.globalAlpha = al * .9; ctx.translate(p.x, p.y); ctx.fillStyle = "#ffe9a8";
+    ctx.beginPath();
+    ctx.moveTo(0, -s * 3); ctx.quadraticCurveTo(0, 0, s * 3, 0); ctx.quadraticCurveTo(0, 0, 0, s * 3); ctx.quadraticCurveTo(0, 0, -s * 3, 0); ctx.quadraticCurveTo(0, 0, 0, -s * 3);
+    ctx.fill(); ctx.restore();
+  }
+  function tick() {
+    ctx.clearRect(0, 0, W, H);
+    if (!REDUCED) {
+      if (Math.random() < .05) spark(rnd(0, W), rnd(0, H * .9));
+      if (Math.random() < .0045) coin(rnd(0, W), -20, rnd(-.3, .3), rnd(.8, 1.6), 0, rnd(7, 12));
+    }
+    parts = parts.filter((p) => {
+      p.life++;
+      if (p.k === "c") { p.vy += p.g; p.x += p.vx; p.y += p.vy; p.a += p.va; drawCoin(p); return p.y < H + 40 && p.life < p.max; }
+      drawSpark(p); return p.life < p.max;
+    });
+    requestAnimationFrame(tick);
+  }
+  requestAnimationFrame(tick);
+
+  return {
+    burst(n = REDUCED ? 60 : 140) {
+      for (let i = 0; i < n; i++) coin(rnd(0, W), rnd(-H * .6, -20), rnd(-1.5, 1.5), rnd(2, 6), .12);
+      for (let i = 0; i < n / 2; i++) { const a = rnd(Math.PI * 1.1, Math.PI * 1.9), v = rnd(7, 16); coin(W / 2, H * .55, Math.cos(a) * v, Math.sin(a) * v, .28); }
+      for (let i = 0; i < 40; i++) spark(rnd(0, W), rnd(0, H), rnd(2, 5));
+    },
+    sprinkle(x, y) { if (!REDUCED) for (let i = 0; i < 14; i++) spark(x + rnd(-60, 60), y + rnd(-30, 30), rnd(1.5, 3.5)); },
+  };
+})();
+
+/* ================= Ticker ================= */
+const QUIPS = [
+  "Hindsight is <b>24 karat</b>.",
+  "This leaderboard is not financial advice. Neither is anything else at this party.",
+  "Somewhere, a <b>dragon</b> is watching these numbers very closely.",
+  "Your coins are fictional. Your <b>bragging rights</b> are not.",
+  "All the gold ever mined would fit in roughly <b>four Olympic swimming pools</b>. Please do not swim in it.",
+  "Prices are inflation-adjusted, so no, grandpa's stories about cheap gold don't count.",
+  "Buy low, sell high. It's that simple. <b>(It is not that simple.)</b>",
+  "Gold doesn't rust, tarnish or care about your feelings.",
+  "Fortune favours the bold. And occasionally the lucky.",
+  "Reminder: the only thing heavier than gold is the leader's ego.",
+];
+(() => {
+  const el = document.getElementById("tick");
+  let i = Math.floor(Math.random() * QUIPS.length);
+  el.innerHTML = QUIPS[i];
+  setInterval(() => {
+    el.classList.add("out");
+    setTimeout(() => { i = (i + 1) % QUIPS.length; el.innerHTML = QUIPS[i]; el.classList.remove("out"); }, 500);
+  }, 9000);
+})();
+
+/* ================= Celebration ================= */
+const PODIUM_LINES = [
+  "%t just elbowed their way onto the podium.",
+  "Make room up there. %t has arrived.",
+  "%t has struck gold. Figuratively. The gold is also figurative.",
+  "%t enters the top 3. The dragon is nervous.",
+  "Plot twist: %t is now podium material.",
+];
+const LEADER_LINES = [
+  "%t takes the crown. Heavy is the head. Shiny is the crown.",
+  "New number one: %t. Everyone else, please act natural.",
+  "%t is now the richest team in the room. Allegedly.",
+];
+const pick = (a) => a[Math.floor(Math.random() * a.length)];
+const queue = []; let showing = false;
+function celebrate(kick, name, line) { queue.push({ kick, name, line }); if (!showing) nextCele(); }
+function nextCele() {
+  const c = queue.shift(); if (!c) { showing = false; return; }
+  showing = true;
+  const el = document.getElementById("cele");
+  document.getElementById("celeKick").textContent = c.kick;
+  document.getElementById("celeName").textContent = c.name;
+  document.getElementById("celeLine").textContent = c.line;
+  el.classList.add("on"); FX.burst();
+  setTimeout(() => { el.classList.remove("on"); setTimeout(nextCele, 600); }, 5200);
+}
+
+/* ================= Rendering ================= */
+let state = null, ready = false, first = true;
+let prevTop3 = null, prevLeader = null, prevHidden = null, seen = new Set(), shownVals = new Map();
+
+function countUp(el, from, to) {
+  if (from === to) { el.textContent = fmt(to); return; }
+  const t0 = performance.now(), dur = 1100;
+  const step = (t) => { const k = Math.min(1, (t - t0) / dur), e = 1 - Math.pow(1 - k, 3); el.textContent = fmt(from + (to - from) * e); if (k < 1) requestAnimationFrame(step); };
+  requestAnimationFrame(step);
+}
+
+function flip(update) {
+  const before = new Map();
+  board.querySelectorAll("[data-id]").forEach((el) => before.set(el.dataset.id, el.getBoundingClientRect()));
+  update();
+  board.querySelectorAll("[data-id]").forEach((el) => {
+    const b = before.get(el.dataset.id); if (!b) return;
+    const a = el.getBoundingClientRect(), dx = b.left - a.left, dy = b.top - a.top;
+    if (Math.abs(dx) > 1 || Math.abs(dy) > 1) el.animate([{ transform: `translate(${dx}px,${dy}px)` }, { transform: "none" }], { duration: 800, easing: "cubic-bezier(.2,.8,.2,1)" });
+  });
+}
+
+const profitHtml = (p) => `<span class="${p >= 0 ? "pos" : "neg"}">${fmtSigned(p)}</span>`;
+
+function podiumSlot(s, place) {
+  const cls = "pod p" + place + (s ? "" : " empty");
+  if (!s) return `<div class="${cls}"><div class="who"><div class="medal">${place}</div><div class="pname">Your team here?</div><div class="pval">&nbsp;</div></div><div class="block">${place}</div></div>`;
+  return `<div class="${cls}" data-id="${s.id}">
+    <div class="who">
+      ${place === 1 ? `<span class="crown" aria-hidden="true">👑</span>` : ""}
+      <div class="medal">${place}</div>
+      <div class="pname">${esc(s.team)}</div>
+      <div class="pval"><span data-count="${s.id}">${fmt(s.value)}</span><i class="coin-i"></i></div>
+      <div class="pprofit">${profitHtml(s.profit)} profit</div>
+    </div>
+    <div class="block">${place}</div>
+  </div>`;
+}
 
 function render() {
   if (!state || !ready) return;
-  const hidden = state.settings.scores_hidden;
-  document.getElementById("hiddenBanner").classList.toggle("hide", !hidden);
+  const hidden = !!state.settings.scores_hidden;
   const ranked = Game.rank(state.subs);
+  const n = ranked.length;
 
-  document.getElementById("sTeams").textContent = ranked.length;
+  document.getElementById("sTeams").textContent = n;
   document.getElementById("sCoins").textContent = ranked.reduce((t, s) => t + s.invested, 0).toLocaleString("en-US");
-  document.getElementById("sTop").textContent = hidden ? "?" : ranked.length ? fmt(ranked[0].value) : "–";
+  document.getElementById("sTop").textContent = hidden ? "🔒" : n ? fmt(ranked[0].value) : "–";
 
   if (hidden) {
-    head.innerHTML = `<tr><th>#</th><th>Team</th></tr>`;
-    lb.innerHTML = ranked.length
-      ? [...state.subs].sort((a, b) => a.team.localeCompare(b.team)).map((s, i) => `<tr><td class="rank">${i + 1}</td><td class="team">${esc(s.team)}</td></tr>`).join("")
-      : `<tr><td class="empty" colspan="2">No teams yet.</td></tr>`;
-    return;
+    board.innerHTML = `<div class="vault">
+      <div class="lock" aria-hidden="true">🔐</div>
+      <h2>The vault is locked</h2>
+      <p>Scores are sealed until the big reveal. These brave investors are in:</p>
+      <div class="tiles">${n ? [...state.subs].sort((a, b) => a.team.localeCompare(b.team)).map((s, i) => `<span class="tile" style="animation-delay:${Math.min(i, 30) * 40}ms">${esc(s.team)}</span>`).join("") : `<span class="mut">Nobody yet. Suspiciously quiet.</span>`}</div>
+    </div>`;
+  } else if (!n) {
+    board.innerHTML = `<div class="empty-state"><b>The vault is empty.</b>Suspiciously empty. Hand in your answer sheet to get on the board.</div>`;
+  } else {
+    const maxV = ranked[0].value || 1;
+    flip(() => {
+      board.innerHTML = `<div class="podium">${podiumSlot(ranked[1], 2)}${podiumSlot(ranked[0], 1)}${podiumSlot(ranked[2], 3)}</div>
+      ${n > 3 ? `<ol class="list">${ranked.slice(3).map((s, k) => `
+        <li class="row" data-id="${s.id}">
+          <span class="rk">${k + 4}</span>
+          <span class="nm">${esc(s.team)}</span>
+          <span class="bar"><i style="width:${Math.max(2, (100 * s.value) / maxV).toFixed(1)}%"></i></span>
+          <span class="val"><span data-count="${s.id}">${fmt(s.value)}</span></span>
+          <span class="pf">${profitHtml(s.profit)}</span>
+        </li>`).join("")}</ol>` : ""}`;
+    });
+    // count-up numbers & fresh highlights
+    ranked.forEach((s) => {
+      const el = board.querySelector(`[data-count="${s.id}"]`);
+      if (el) countUp(el, shownVals.has(s.id) ? shownVals.get(s.id) : 0, s.value);
+      shownVals.set(s.id, s.value);
+      if (!first && !seen.has(s.id)) {
+        const host = board.querySelector(`[data-id="${s.id}"]`);
+        if (host) {
+          host.classList.add("fresh");
+          const nm = host.querySelector(".nm"); if (nm) nm.insertAdjacentHTML("beforeend", `<span class="newtag">NEW</span>`);
+          const r = host.getBoundingClientRect(); FX.sprinkle(r.left + r.width / 2, r.top + r.height / 2);
+        }
+      }
+    });
   }
 
-  head.innerHTML = `<tr><th>#</th><th>Team</th><th class="n">Value</th><th class="n opt">Invested</th><th class="n">Profit</th><th class="n opt">% of perfect</th></tr>`;
-  lb.innerHTML = ranked.length
-    ? ranked.map((s, i) => {
-        const r = i + 1, cls = r <= 3 ? "r" + r : "";
-        return `<tr class="${cls}">
-          <td class="rank">${r <= 3 ? `<span class="medal">${r}</span>` : r}</td>
-          <td class="team">${esc(s.team)}</td>
-          <td class="n big">${fmt(s.value)}</td>
-          <td class="n opt">${s.invested.toLocaleString("en-US")}</td>
-          <td class="n ${s.profit >= 0 ? "pos" : "neg"}">${fmtSigned(s.profit)}</td>
-          <td class="n opt">${s.pct.toFixed(1)}%</td>
-        </tr>`;
-      }).join("")
-    : `<tr><td class="empty" colspan="6">No teams yet. Be the first!</td></tr>`;
+  // ---- Celebrations ----
+  const top3 = ranked.slice(0, 3).map((s) => s.id);
+  if (!first && !hidden) {
+    if (prevHidden === true) {
+      celebrate("THE VAULT IS OPEN", n ? ranked[0].team : "Scores revealed", n ? pick(LEADER_LINES).replace("%t", ranked[0].team) : "");
+    } else if (n >= 5 && prevTop3) {
+      const newcomers = ranked.slice(0, 3).filter((s) => !prevTop3.includes(s.id));
+      newcomers.forEach((s) => {
+        const isLeader = s.id === ranked[0].id;
+        celebrate(isLeader ? "NEW LEADER" : "NEW ON THE PODIUM", s.team, pick(isLeader ? LEADER_LINES : PODIUM_LINES).replace("%t", s.team));
+      });
+      if (!newcomers.length && prevLeader != null && ranked[0].id !== prevLeader) {
+        celebrate("NEW LEADER", ranked[0].team, pick(LEADER_LINES).replace("%t", ranked[0].team));
+      }
+    }
+  }
+  if (!hidden) { prevTop3 = top3; prevLeader = n ? ranked[0].id : null; }
+  prevHidden = hidden;
+  ranked.forEach((s) => seen.add(s.id));
+  first = false;
 }
 
 Game.load()
   .then(() => { ready = true; render(); })
-  .catch((e) => { lb.innerHTML = `<tr><td class="empty err" colspan="6">${esc(e.message)}</td></tr>`; });
+  .catch((e) => { board.innerHTML = `<div class="empty-state"><b>Hmm.</b>${esc(e.message)}</div>`; });
 
 watchGame((s) => { state = s; render(); }, (on) => setLive(document.getElementById("live"), on));
 </script>

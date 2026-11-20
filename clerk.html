@@ -9,7 +9,7 @@
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
-<main>
+<main class="wide">
   <div class="top">
     <div>
       <h1>Clerk desk</h1>
@@ -19,7 +19,7 @@
   </div>
 
   <!-- Passcode gate -->
-  <div class="card" id="gate">
+  <div class="card" id="gate" style="max-width:420px">
     <h2>Clerk passcode</h2>
     <form id="gateForm">
       <div class="field">
@@ -34,20 +34,30 @@
   <div id="desk" class="hide">
     <!-- Entry form -->
     <div class="card" id="formCard">
-      <h2 id="formTitle">New answer sheet</h2>
       <form id="sheet" autocomplete="off">
-        <div class="field">
-          <label for="team">Team name</label>
-          <input type="text" id="team" maxlength="40" required>
-          <div class="hint" id="teamHint"></div>
+        <div class="teamrow">
+          <div>
+            <label for="team" id="formTitle">New answer sheet: team name</label>
+            <input type="text" id="team" maxlength="40" spellcheck="false">
+          </div>
+          <div class="actions" style="margin:0">
+            <button type="submit" id="saveBtn">Save sheet</button>
+            <button type="button" class="sec" id="clearBtn">Clear</button>
+          </div>
         </div>
+        <div class="hint" id="teamHint"></div>
+        <p class="keys">
+          <kbd>Enter</kbd> next field ·
+          Year: type <kbd>0</kbd>–<kbd>9</kbd> ·
+          Month: <kbd>2</kbd>–<kbd>9</kbd>, <kbd>1</kbd><kbd>0</kbd> <kbd>1</kbd><kbd>1</kbd> <kbd>1</kbd><kbd>2</kbd>, January = <kbd>0</kbd><kbd>1</kbd> ·
+          <kbd>←</kbd><kbd>→</kbd> adjust · <kbd>Ctrl</kbd>+<kbd>Enter</kbd> save · <kbd>Esc</kbd> clear
+        </p>
+        <div class="colhead"><span>Decade</span><span>Year</span><span>Month</span><span style="text-align:right">Coins</span></div>
         <div id="rows"></div>
         <div class="actions">
-          <button type="submit" id="saveBtn">Save sheet</button>
-          <button type="button" class="sec hide" id="cancelBtn">Cancel edit</button>
+          <span class="msg" id="formMsg" role="status" style="margin:0"></span>
           <span class="total">Total invested: <b id="total">0</b> coins</span>
         </div>
-        <div class="msg" id="formMsg" role="status"></div>
       </form>
     </div>
 
@@ -55,7 +65,10 @@
     <div class="card">
       <div class="top" style="margin-bottom:10px">
         <h2 style="margin:0">Entries (<span id="count">0</span>)</h2>
-        <label class="toggle"><input type="checkbox" id="hideScores"> Hide scores on leaderboard</label>
+        <div style="display:flex;gap:14px;align-items:center;flex-wrap:wrap">
+          <input type="text" id="search" class="search" placeholder="Find team…" aria-label="Find team">
+          <label class="toggle"><input type="checkbox" id="hideScores"> Hide scores on leaderboard</label>
+        </div>
       </div>
       <div class="scroll">
         <table>
@@ -68,24 +81,27 @@
     <p class="small mut">Signed in on this device. <a href="#" id="lock">Lock</a></p>
   </div>
 </main>
+<div class="toast" id="toast" role="status"></div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
 <script src="app.js"></script>
 <script>
 const $ = (id) => document.getElementById(id);
 const PASS_KEY = "goldpeak.pass";
-let pass = null, state = { subs: [], settings: { scores_hidden: false } }, ready = false, editingId = null;
+let pass = null, state = { subs: [], settings: { scores_hidden: false } }, ready = false, editingId = null, flashKey = null;
 
 const store = {
   get() { try { return localStorage.getItem(PASS_KEY); } catch { return null; } },
   set(v) { try { v ? localStorage.setItem(PASS_KEY, v) : localStorage.removeItem(PASS_KEY); } catch {} },
 };
-function msg(el, text, cls) { el.textContent = text; el.className = "msg " + (cls || ""); }
+function msg(text, cls) { const el = $("formMsg"); el.textContent = text; el.className = "msg " + (cls || ""); }
+let toastTimer;
+function toast(text) { const t = $("toast"); t.textContent = text; t.classList.add("on"); clearTimeout(toastTimer); toastTimer = setTimeout(() => t.classList.remove("on"), 2200); }
 
 // ---------- Passcode ----------
 async function unlock(p, silent) {
   const { error } = await sb.rpc("verify_passcode", { p_pass: p });
-  if (error) { if (!silent) msg($("gateMsg"), errText(error), "err"); store.set(null); return false; }
+  if (error) { if (!silent) { $("gateMsg").textContent = errText(error); $("gateMsg").className = "msg err"; } store.set(null); return false; }
   pass = p; store.set(p);
   $("gate").classList.add("hide"); $("desk").classList.remove("hide");
   $("team").focus();
@@ -99,59 +115,150 @@ $("gateForm").onsubmit = async (e) => {
 };
 $("lock").onclick = (e) => { e.preventDefault(); store.set(null); location.reload(); };
 
-// ---------- Form ----------
+// ---------- Fast entry rows ----------
+const sel = DECADES.map(() => ({ y: null, m: null }));
+const monthBuf = DECADES.map(() => "");
+const yg = (i) => $("yg" + i), mg = (i) => $("mg" + i), coin = (i) => $("a" + i);
+
 function buildRows() {
-  $("rows").innerHTML = DECADES.map(([a, b], i) => {
-    const years = Array.from({ length: b - a + 1 }, (_, k) => a + k);
-    return `<div class="dec">
-      <div class="lbl">${a}s</div>
-      <div><label for="y${i}">Year</label><select id="y${i}" required><option value="">—</option>${years.map((y) => `<option>${y}</option>`).join("")}</select></div>
-      <div><label for="m${i}">Month</label><select id="m${i}" required><option value="">—</option>${MONTHS.map((m, k) => `<option value="${String(k + 1).padStart(2, "0")}">${m}</option>`).join("")}</select></div>
-      <div><label for="a${i}">Coins</label><input type="number" id="a${i}" min="0" step="1" inputmode="numeric" placeholder="0"></div>
-    </div>`;
-  }).join("");
-  $("rows").addEventListener("input", updateTotal);
+  $("rows").innerHTML = DECADES.map(([a], i) => `
+    <div class="dec" id="dec${i}">
+      <div class="lbl"><b>${a}s</b><small id="sum${i}">—</small></div>
+      <div class="chips years" id="yg${i}" tabindex="0" role="radiogroup" aria-label="${a}s year">
+        ${Array.from({ length: 10 }, (_, k) => `<button type="button" class="chip" tabindex="-1" role="radio" aria-checked="false" data-i="${i}" data-y="${a + k}"><sup>${k}</sup>'${String(a + k).slice(2)}</button>`).join("")}
+      </div>
+      <div class="chips months" id="mg${i}" tabindex="0" role="radiogroup" aria-label="${a}s month">
+        ${MONTHS.map((m, k) => `<button type="button" class="chip" tabindex="-1" role="radio" aria-checked="false" data-i="${i}" data-m="${k + 1}"><sup>${k + 1}</sup>${m}</button>`).join("")}
+      </div>
+      <input type="text" class="coins" id="a${i}" inputmode="numeric" placeholder="0" aria-label="${a}s coins" maxlength="7">
+    </div>`).join("");
+
+  DECADES.forEach((_, i) => {
+    yg(i).addEventListener("keydown", (e) => yearKey(e, i));
+    mg(i).addEventListener("keydown", (e) => monthKey(e, i));
+    mg(i).addEventListener("blur", () => { if (monthBuf[i]) { monthBuf[i] = ""; paint(i); } });
+    coin(i).addEventListener("keydown", (e) => coinKey(e, i));
+    coin(i).addEventListener("input", () => { const v = coin(i).value.replace(/\D/g, ""); if (v !== coin(i).value) coin(i).value = v; paint(i); updateTotal(); });
+    coin(i).addEventListener("focus", () => coin(i).select());
+  });
+  $("rows").addEventListener("click", (e) => {
+    const c = e.target.closest(".chip"); if (!c) return;
+    const i = +c.dataset.i;
+    if (c.dataset.y) { sel[i].y = +c.dataset.y; paint(i); mg(i).focus(); }
+    else { monthBuf[i] = ""; sel[i].m = +c.dataset.m; paint(i); coin(i).focus(); }
+  });
+  $("rows").addEventListener("focusin", (e) => {
+    const d = e.target.closest(".dec");
+    document.querySelectorAll(".dec").forEach((x) => x.classList.toggle("active", x === d));
+  });
+  $("rows").addEventListener("focusout", (e) => {
+    if (!e.relatedTarget || !e.relatedTarget.closest || !e.relatedTarget.closest(".dec")) document.querySelectorAll(".dec").forEach((x) => x.classList.remove("active"));
+  });
 }
+
+function paint(i) {
+  const s = sel[i];
+  yg(i).querySelectorAll(".chip").forEach((c) => c.setAttribute("aria-checked", String(+c.dataset.y === s.y)));
+  mg(i).querySelectorAll(".chip").forEach((c) => c.setAttribute("aria-checked", String(+c.dataset.m === s.m)));
+  mg(i).classList.toggle("pending", !!monthBuf[i]);
+  const c = coin(i).value;
+  const when = s.y && s.m ? MONTHS[s.m - 1] + " " + s.y : s.y ? "? " + s.y : s.m ? MONTHS[s.m - 1] + " ?" : "";
+  $("sum" + i).textContent = when || c ? `${when || "—"}${c ? " · " + c + " 🪙" : ""}` : "—";
+  $("dec" + i).classList.toggle("done", !!(s.y && s.m && c !== ""));
+}
+
+function nextAfterCoins(i) { if (i < DECADES.length - 1) yg(i + 1).focus(); else $("sheet").requestSubmit(); }
+
+function yearKey(e, i) {
+  const base = DECADES[i][0], s = sel[i];
+  if (/^[0-9]$/.test(e.key)) { e.preventDefault(); s.y = base + +e.key; paint(i); mg(i).focus(); }
+  else if (e.key === "ArrowRight" || e.key === "ArrowUp") { e.preventDefault(); s.y = Math.min(base + 9, (s.y ?? base - 1) + 1); paint(i); }
+  else if (e.key === "ArrowLeft" || e.key === "ArrowDown") { e.preventDefault(); s.y = Math.max(base, (s.y ?? base + 1) - 1); paint(i); }
+  else if (e.key === "Backspace" || e.key === "Delete") { e.preventDefault(); s.y = null; paint(i); }
+  else if (e.key === "Enter" && !e.ctrlKey) { e.preventDefault(); mg(i).focus(); }
+}
+
+function monthKey(e, i) {
+  const s = sel[i];
+  const done = () => { monthBuf[i] = ""; paint(i); coin(i).focus(); };
+  if (/^[0-9]$/.test(e.key)) {
+    e.preventDefault();
+    const d = +e.key, buf = monthBuf[i];
+    if (buf === "0") { if (d >= 1) { s.m = d; done(); } return; }
+    if (buf === "1") {
+      if (d <= 2) { s.m = 10 + d; done(); }
+      else { s.m = 1; done(); coin(i).value = String(d); coin(i).dispatchEvent(new Event("input")); } // "1" then 3–9 = January, digit goes to coins
+      return;
+    }
+    if (d === 0) { monthBuf[i] = "0"; paint(i); return; }
+    if (d === 1) { monthBuf[i] = "1"; s.m = 1; paint(i); return; } // wait: could be Jan, Oct, Nov or Dec
+    s.m = d; done();
+  } else if (e.key === "ArrowRight" || e.key === "ArrowUp") { e.preventDefault(); monthBuf[i] = ""; s.m = Math.min(12, (s.m ?? 0) + 1); paint(i); }
+  else if (e.key === "ArrowLeft" || e.key === "ArrowDown") { e.preventDefault(); monthBuf[i] = ""; s.m = Math.max(1, (s.m ?? 2) - 1); paint(i); }
+  else if (e.key === "Backspace" || e.key === "Delete") { e.preventDefault(); monthBuf[i] = ""; s.m = null; paint(i); }
+  else if ((e.key === "Enter" && !e.ctrlKey) || e.key === " ") { e.preventDefault(); if (s.m) done(); }
+}
+
+function coinKey(e, i) {
+  if (e.key === "Enter" && !e.ctrlKey) { e.preventDefault(); nextAfterCoins(i); }
+  else if (e.key === "ArrowUp") { e.preventDefault(); coin(i).value = String((+coin(i).value || 0) + 1); coin(i).dispatchEvent(new Event("input")); }
+  else if (e.key === "ArrowDown") { e.preventDefault(); coin(i).value = String(Math.max(0, (+coin(i).value || 0) - 1)); coin(i).dispatchEvent(new Event("input")); }
+}
+
+$("team").addEventListener("keydown", (e) => { if (e.key === "Enter" && !e.ctrlKey) { e.preventDefault(); yg(0).focus(); } });
+document.addEventListener("keydown", (e) => {
+  if ($("desk").classList.contains("hide")) return;
+  if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) { e.preventDefault(); $("sheet").requestSubmit(); }
+  else if (e.key === "Escape" && $("formCard").contains(document.activeElement)) { e.preventDefault(); resetForm(); msg(""); }
+});
+
 function readForm() {
   return {
     team: $("team").value.trim(),
-    dates: DECADES.map((_, i) => ($("y" + i).value && $("m" + i).value ? $("y" + i).value + "-" + $("m" + i).value : "")),
-    amounts: DECADES.map((_, i) => ($("a" + i).value === "" ? 0 : Number($("a" + i).value))),
+    amounts: DECADES.map((_, i) => (coin(i).value === "" ? 0 : Number(coin(i).value))),
+    // A decade with 0 coins doesn't need a pick: its month can't change the score.
+    dates: DECADES.map(([a], i) => {
+      const s = sel[i];
+      if (s.y && s.m) return s.y + "-" + String(s.m).padStart(2, "0");
+      return (coin(i).value === "" || +coin(i).value === 0) && !s.y && !s.m ? a + "-01" : "";
+    }),
   };
 }
+function updateTotal() { $("total").textContent = readForm().amounts.reduce((x, a) => x + a, 0).toLocaleString("en-US"); }
+
 function fillForm(s) {
   $("team").value = s ? s.team : "";
   DECADES.forEach((_, i) => {
-    const [y, m] = s ? s.dates[i].split("-") : ["", ""];
-    $("y" + i).value = y; $("m" + i).value = m;
-    $("a" + i).value = s ? s.amounts[i] : "";
+    monthBuf[i] = "";
+    if (s) { const [y, m] = s.dates[i].split("-"); sel[i].y = +y; sel[i].m = +m; coin(i).value = String(s.amounts[i]); }
+    else { sel[i].y = sel[i].m = null; coin(i).value = ""; }
+    paint(i);
   });
   updateTotal(); checkTeam();
 }
-function updateTotal() {
-  const t = readForm().amounts.reduce((x, a) => x + (Number.isFinite(a) ? a : 0), 0);
-  $("total").textContent = t.toLocaleString("en-US");
-}
+
 function teamTaken(name) {
   const k = teamKey(name);
   return !!k && state.subs.some((s) => teamKey(s.team) === k && s.id !== editingId);
 }
 function checkTeam() {
-  const name = $("team").value;
-  const taken = teamTaken(name);
+  const taken = teamTaken($("team").value);
   $("teamHint").textContent = taken ? "⚠ This team name is already taken." : "";
   $("teamHint").className = "hint " + (taken ? "err" : "");
-  return !taken;
 }
 $("team").addEventListener("input", checkTeam);
 
 function validate(f) {
-  if (!f.team) return "Enter a team name.";
-  if (teamTaken(f.team)) return ERRORS.team_taken;
-  const missing = f.dates.findIndex((d) => !d);
-  if (missing >= 0) return `Pick a year and month for the ${DECADES[missing][0]}s.`;
-  if (f.amounts.some((a) => !Number.isInteger(a) || a < 0)) return ERRORS.bad_amount;
-  if (f.amounts.every((a) => a === 0)) return "Invest at least one coin somewhere.";
+  if (!f.team) return { text: "Enter a team name.", focus: $("team") };
+  if (teamTaken(f.team)) return { text: ERRORS.team_taken, focus: $("team") };
+  for (let i = 0; i < DECADES.length; i++) {
+    if (!f.dates[i]) {
+      const s = sel[i];
+      return { text: `${DECADES[i][0]}s: pick a ${s.y ? "month" : "year"}.`, focus: s.y ? mg(i) : yg(i) };
+    }
+  }
+  if (f.amounts.some((a) => !Number.isInteger(a) || a < 0)) return { text: ERRORS.bad_amount };
+  if (f.amounts.every((a) => a === 0)) return { text: "Invest at least one coin somewhere.", focus: coin(0) };
   return null;
 }
 
@@ -162,42 +269,47 @@ function startEdit(id) {
   fillForm(s);
   $("formTitle").textContent = "Editing: " + s.team;
   $("saveBtn").textContent = "Save changes";
-  $("cancelBtn").classList.remove("hide");
+  $("clearBtn").textContent = "Cancel edit";
   $("formCard").classList.add("editing");
-  msg($("formMsg"), "");
-  $("formCard").scrollIntoView({ behavior: "smooth", block: "start" });
+  msg("");
+  window.scrollTo({ top: 0, behavior: "smooth" });
   $("team").focus();
 }
-function stopEdit() {
+function resetForm() {
   editingId = null;
   fillForm(null);
-  $("formTitle").textContent = "New answer sheet";
+  $("formTitle").textContent = "New answer sheet: team name";
   $("saveBtn").textContent = "Save sheet";
-  $("cancelBtn").classList.add("hide");
+  $("clearBtn").textContent = "Clear";
   $("formCard").classList.remove("editing");
+  $("team").focus();
 }
-$("cancelBtn").onclick = () => { stopEdit(); msg($("formMsg"), ""); };
+$("clearBtn").onclick = () => { resetForm(); msg(""); };
 
+let saving = false;
 $("sheet").onsubmit = async (e) => {
   e.preventDefault();
+  if (saving) return;
   const f = readForm();
   const problem = validate(f);
-  if (problem) return msg($("formMsg"), problem, "err");
-  $("saveBtn").disabled = true;
+  if (problem) { msg(problem.text, "err"); problem.focus && problem.focus.focus(); return; }
+  saving = true; $("saveBtn").disabled = true; msg("Saving…");
   const wasEditing = editingId;
   const { error } = wasEditing
     ? await sb.rpc("update_submission", { p_pass: pass, p_id: wasEditing, p_team: f.team, p_dates: f.dates, p_amounts: f.amounts })
     : await sb.rpc("add_submission", { p_pass: pass, p_team: f.team, p_dates: f.dates, p_amounts: f.amounts });
-  $("saveBtn").disabled = false;
+  saving = false; $("saveBtn").disabled = false;
   if (error) {
-    msg($("formMsg"), errText(error), "err");
+    msg(errText(error), "err");
     if (/wrong_passcode/.test(error.message)) { store.set(null); setTimeout(() => location.reload(), 1500); }
+    if (/team_taken/.test(error.message)) $("team").focus();
     return;
   }
-  msg($("formMsg"), `✓ Saved “${f.team}”.`, "ok");
-  stopEdit();
+  msg("");
+  toast(`✓ Saved “${f.team}”`);
+  flashKey = teamKey(f.team);
+  resetForm();
   live.refresh();
-  $("team").focus();
 };
 
 // ---------- List ----------
@@ -205,17 +317,20 @@ function renderList() {
   $("count").textContent = state.subs.length;
   $("hideScores").checked = !!state.settings.scores_hidden;
   if (!ready) return;
-  const ranked = Game.rank(state.subs);
+  const q = teamKey($("search").value);
+  const ranked = Game.rank(state.subs).map((s, i) => ({ ...s, rank: i + 1 })).filter((s) => !q || teamKey(s.team).includes(q));
   $("list").innerHTML = ranked.length
-    ? ranked.map((s, i) => `<tr>
-        <td class="mut">${i + 1}</td>
+    ? ranked.map((s) => `<tr class="${flashKey && teamKey(s.team) === flashKey ? "flash" : ""}">
+        <td class="mut">${s.rank}</td>
         <td class="team">${esc(s.team)}</td>
-        <td class="picks">${s.parts.map((p) => `${monthLabel(p.date)} · ${p.amt}`).join("<br>")}</td>
+        <td class="picks">${s.parts.map((p) => `${monthLabel(p.date)} · ${p.amt}`).join(" &nbsp;|&nbsp; ")}</td>
         <td class="n">${fmt(s.value)}</td>
         <td class="n"><button class="sec sm" data-edit="${s.id}">Edit</button> <button class="danger sm" data-del="${s.id}">Delete</button></td>
       </tr>`).join("")
-    : `<tr><td class="empty" colspan="5">No entries yet.</td></tr>`;
+    : `<tr><td class="empty" colspan="5">${q ? "No team matches." : "No entries yet."}</td></tr>`;
+  flashKey = null;
 }
+$("search").addEventListener("input", renderList);
 $("list").onclick = async (e) => {
   const ed = e.target.closest("[data-edit]"), del = e.target.closest("[data-del]");
   if (ed) return startEdit(Number(ed.dataset.edit));
@@ -225,7 +340,8 @@ $("list").onclick = async (e) => {
     del.disabled = true;
     const { error } = await sb.rpc("delete_submission", { p_pass: pass, p_id: id });
     if (error) { del.disabled = false; return alert(errText(error)); }
-    if (editingId === id) stopEdit();
+    if (editingId === id) resetForm();
+    toast(`Deleted “${s.team}”`);
     live.refresh();
   }
 };
@@ -233,12 +349,13 @@ $("hideScores").onchange = async (e) => {
   const want = e.target.checked;
   const { error } = await sb.rpc("set_scores_hidden", { p_pass: pass, p_hidden: want });
   if (error) { e.target.checked = !want; alert(errText(error)); }
-  else live.refresh();
+  else { toast(want ? "Scores hidden on leaderboard" : "Scores revealed! 🎉"); live.refresh(); }
 };
 
 // ---------- Boot ----------
 buildRows();
-Game.load().then(() => { ready = true; renderList(); }).catch((e) => msg($("formMsg"), e.message, "err"));
+DECADES.forEach((_, i) => paint(i));
+Game.load().then(() => { ready = true; renderList(); }).catch((e) => msg(e.message, "err"));
 const live = watchGame((s) => { state = s; renderList(); checkTeam(); }, (on) => setLive($("live"), on));
 const saved = store.get();
 if (saved) unlock(saved, true);
