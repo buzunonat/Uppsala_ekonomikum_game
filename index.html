@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Gold Peak Leaderboard</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🪙</text></svg>">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<main>
+  <div class="top">
+    <div>
+      <h1>Gold Peak Challenge</h1>
+      <p class="sub">Pick the month gold peaked in each decade. Invest your coins. Highest value wins.</p>
+    </div>
+    <span class="live" id="live"><i></i> Connecting…</span>
+  </div>
+
+  <div class="stats">
+    <div class="stat"><span>Teams</span><b id="sTeams">–</b></div>
+    <div class="stat"><span>Coins invested</span><b id="sCoins">–</b></div>
+    <div class="stat"><span>Top value</span><b id="sTop">–</b></div>
+  </div>
+
+  <div class="banner hide" id="hiddenBanner">Scores are hidden until the big reveal. Here's who has signed up so far.</div>
+
+  <div class="card">
+    <h2>Leaderboard</h2>
+    <div class="scroll">
+      <table class="lb">
+        <thead id="lbHead"></thead>
+        <tbody id="lb"><tr><td class="empty" colspan="6">Loading…</td></tr></tbody>
+      </table>
+    </div>
+  </div>
+  <p class="mut small">Value = coins × (gold price in your month ÷ gold price at the start of that decade), using inflation-adjusted prices. “% of perfect” compares you to investing the same coins at each decade’s true peak.</p>
+</main>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
+<script src="app.js"></script>
+<script>
+const lb = document.getElementById("lb"), head = document.getElementById("lbHead");
+let state = null, ready = false;
+
+function render() {
+  if (!state || !ready) return;
+  const hidden = state.settings.scores_hidden;
+  document.getElementById("hiddenBanner").classList.toggle("hide", !hidden);
+  const ranked = Game.rank(state.subs);
+
+  document.getElementById("sTeams").textContent = ranked.length;
+  document.getElementById("sCoins").textContent = ranked.reduce((t, s) => t + s.invested, 0).toLocaleString("en-US");
+  document.getElementById("sTop").textContent = hidden ? "?" : ranked.length ? fmt(ranked[0].value) : "–";
+
+  if (hidden) {
+    head.innerHTML = `<tr><th>#</th><th>Team</th></tr>`;
+    lb.innerHTML = ranked.length
+      ? [...state.subs].sort((a, b) => a.team.localeCompare(b.team)).map((s, i) => `<tr><td class="rank">${i + 1}</td><td class="team">${esc(s.team)}</td></tr>`).join("")
+      : `<tr><td class="empty" colspan="2">No teams yet.</td></tr>`;
+    return;
+  }
+
+  head.innerHTML = `<tr><th>#</th><th>Team</th><th class="n">Value</th><th class="n opt">Invested</th><th class="n">Profit</th><th class="n opt">% of perfect</th></tr>`;
+  lb.innerHTML = ranked.length
+    ? ranked.map((s, i) => {
+        const r = i + 1, cls = r <= 3 ? "r" + r : "";
+        return `<tr class="${cls}">
+          <td class="rank">${r <= 3 ? `<span class="medal">${r}</span>` : r}</td>
+          <td class="team">${esc(s.team)}</td>
+          <td class="n big">${fmt(s.value)}</td>
+          <td class="n opt">${s.invested.toLocaleString("en-US")}</td>
+          <td class="n ${s.profit >= 0 ? "pos" : "neg"}">${fmtSigned(s.profit)}</td>
+          <td class="n opt">${s.pct.toFixed(1)}%</td>
+        </tr>`;
+      }).join("")
+    : `<tr><td class="empty" colspan="6">No teams yet. Be the first!</td></tr>`;
+}
+
+Game.load()
+  .then(() => { ready = true; render(); })
+  .catch((e) => { lb.innerHTML = `<tr><td class="empty err" colspan="6">${esc(e.message)}</td></tr>`; });
+
+watchGame((s) => { state = s; render(); }, (on) => setLive(document.getElementById("live"), on));
+</script>
+</body>
+</html>

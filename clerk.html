@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex">
+<title>Gold Peak Clerk</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>✏️</text></svg>">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<main>
+  <div class="top">
+    <div>
+      <h1>Clerk desk</h1>
+      <p class="sub">Enter each team's answer sheet. <a href="./" target="_blank">Open leaderboard ↗</a></p>
+    </div>
+    <span class="live" id="live"><i></i> Connecting…</span>
+  </div>
+
+  <!-- Passcode gate -->
+  <div class="card" id="gate">
+    <h2>Clerk passcode</h2>
+    <form id="gateForm">
+      <div class="field">
+        <label for="pass">Passcode</label>
+        <input type="password" id="pass" autocomplete="current-password" autofocus>
+      </div>
+      <button type="submit" id="gateBtn">Unlock</button>
+      <div class="msg" id="gateMsg"></div>
+    </form>
+  </div>
+
+  <div id="desk" class="hide">
+    <!-- Entry form -->
+    <div class="card" id="formCard">
+      <h2 id="formTitle">New answer sheet</h2>
+      <form id="sheet" autocomplete="off">
+        <div class="field">
+          <label for="team">Team name</label>
+          <input type="text" id="team" maxlength="40" required>
+          <div class="hint" id="teamHint"></div>
+        </div>
+        <div id="rows"></div>
+        <div class="actions">
+          <button type="submit" id="saveBtn">Save sheet</button>
+          <button type="button" class="sec hide" id="cancelBtn">Cancel edit</button>
+          <span class="total">Total invested: <b id="total">0</b> coins</span>
+        </div>
+        <div class="msg" id="formMsg" role="status"></div>
+      </form>
+    </div>
+
+    <!-- Entries -->
+    <div class="card">
+      <div class="top" style="margin-bottom:10px">
+        <h2 style="margin:0">Entries (<span id="count">0</span>)</h2>
+        <label class="toggle"><input type="checkbox" id="hideScores"> Hide scores on leaderboard</label>
+      </div>
+      <div class="scroll">
+        <table>
+          <thead><tr><th>#</th><th>Team</th><th>Picks (month · coins)</th><th class="n">Value</th><th></th></tr></thead>
+          <tbody id="list"><tr><td class="empty" colspan="5">Loading…</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+
+    <p class="small mut">Signed in on this device. <a href="#" id="lock">Lock</a></p>
+  </div>
+</main>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
+<script src="app.js"></script>
+<script>
+const $ = (id) => document.getElementById(id);
+const PASS_KEY = "goldpeak.pass";
+let pass = null, state = { subs: [], settings: { scores_hidden: false } }, ready = false, editingId = null;
+
+const store = {
+  get() { try { return localStorage.getItem(PASS_KEY); } catch { return null; } },
+  set(v) { try { v ? localStorage.setItem(PASS_KEY, v) : localStorage.removeItem(PASS_KEY); } catch {} },
+};
+function msg(el, text, cls) { el.textContent = text; el.className = "msg " + (cls || ""); }
+
+// ---------- Passcode ----------
+async function unlock(p, silent) {
+  const { error } = await sb.rpc("verify_passcode", { p_pass: p });
+  if (error) { if (!silent) msg($("gateMsg"), errText(error), "err"); store.set(null); return false; }
+  pass = p; store.set(p);
+  $("gate").classList.add("hide"); $("desk").classList.remove("hide");
+  $("team").focus();
+  return true;
+}
+$("gateForm").onsubmit = async (e) => {
+  e.preventDefault();
+  $("gateBtn").disabled = true;
+  await unlock($("pass").value.trim());
+  $("gateBtn").disabled = false;
+};
+$("lock").onclick = (e) => { e.preventDefault(); store.set(null); location.reload(); };
+
+// ---------- Form ----------
+function buildRows() {
+  $("rows").innerHTML = DECADES.map(([a, b], i) => {
+    const years = Array.from({ length: b - a + 1 }, (_, k) => a + k);
+    return `<div class="dec">
+      <div class="lbl">${a}s</div>
+      <div><label for="y${i}">Year</label><select id="y${i}" required><option value="">—</option>${years.map((y) => `<option>${y}</option>`).join("")}</select></div>
+      <div><label for="m${i}">Month</label><select id="m${i}" required><option value="">—</option>${MONTHS.map((m, k) => `<option value="${String(k + 1).padStart(2, "0")}">${m}</option>`).join("")}</select></div>
+      <div><label for="a${i}">Coins</label><input type="number" id="a${i}" min="0" step="1" inputmode="numeric" placeholder="0"></div>
+    </div>`;
+  }).join("");
+  $("rows").addEventListener("input", updateTotal);
+}
+function readForm() {
+  return {
+    team: $("team").value.trim(),
+    dates: DECADES.map((_, i) => ($("y" + i).value && $("m" + i).value ? $("y" + i).value + "-" + $("m" + i).value : "")),
+    amounts: DECADES.map((_, i) => ($("a" + i).value === "" ? 0 : Number($("a" + i).value))),
+  };
+}
+function fillForm(s) {
+  $("team").value = s ? s.team : "";
+  DECADES.forEach((_, i) => {
+    const [y, m] = s ? s.dates[i].split("-") : ["", ""];
+    $("y" + i).value = y; $("m" + i).value = m;
+    $("a" + i).value = s ? s.amounts[i] : "";
+  });
+  updateTotal(); checkTeam();
+}
+function updateTotal() {
+  const t = readForm().amounts.reduce((x, a) => x + (Number.isFinite(a) ? a : 0), 0);
+  $("total").textContent = t.toLocaleString("en-US");
+}
+function teamTaken(name) {
+  const k = teamKey(name);
+  return !!k && state.subs.some((s) => teamKey(s.team) === k && s.id !== editingId);
+}
+function checkTeam() {
+  const name = $("team").value;
+  const taken = teamTaken(name);
+  $("teamHint").textContent = taken ? "⚠ This team name is already taken." : "";
+  $("teamHint").className = "hint " + (taken ? "err" : "");
+  return !taken;
+}
+$("team").addEventListener("input", checkTeam);
+
+function validate(f) {
+  if (!f.team) return "Enter a team name.";
+  if (teamTaken(f.team)) return ERRORS.team_taken;
+  const missing = f.dates.findIndex((d) => !d);
+  if (missing >= 0) return `Pick a year and month for the ${DECADES[missing][0]}s.`;
+  if (f.amounts.some((a) => !Number.isInteger(a) || a < 0)) return ERRORS.bad_amount;
+  if (f.amounts.every((a) => a === 0)) return "Invest at least one coin somewhere.";
+  return null;
+}
+
+function startEdit(id) {
+  const s = state.subs.find((x) => x.id === id);
+  if (!s) return;
+  editingId = id;
+  fillForm(s);
+  $("formTitle").textContent = "Editing: " + s.team;
+  $("saveBtn").textContent = "Save changes";
+  $("cancelBtn").classList.remove("hide");
+  $("formCard").classList.add("editing");
+  msg($("formMsg"), "");
+  $("formCard").scrollIntoView({ behavior: "smooth", block: "start" });
+  $("team").focus();
+}
+function stopEdit() {
+  editingId = null;
+  fillForm(null);
+  $("formTitle").textContent = "New answer sheet";
+  $("saveBtn").textContent = "Save sheet";
+  $("cancelBtn").classList.add("hide");
+  $("formCard").classList.remove("editing");
+}
+$("cancelBtn").onclick = () => { stopEdit(); msg($("formMsg"), ""); };
+
+$("sheet").onsubmit = async (e) => {
+  e.preventDefault();
+  const f = readForm();
+  const problem = validate(f);
+  if (problem) return msg($("formMsg"), problem, "err");
+  $("saveBtn").disabled = true;
+  const wasEditing = editingId;
+  const { error } = wasEditing
+    ? await sb.rpc("update_submission", { p_pass: pass, p_id: wasEditing, p_team: f.team, p_dates: f.dates, p_amounts: f.amounts })
+    : await sb.rpc("add_submission", { p_pass: pass, p_team: f.team, p_dates: f.dates, p_amounts: f.amounts });
+  $("saveBtn").disabled = false;
+  if (error) {
+    msg($("formMsg"), errText(error), "err");
+    if (/wrong_passcode/.test(error.message)) { store.set(null); setTimeout(() => location.reload(), 1500); }
+    return;
+  }
+  msg($("formMsg"), `✓ Saved “${f.team}”.`, "ok");
+  stopEdit();
+  live.refresh();
+  $("team").focus();
+};
+
+// ---------- List ----------
+function renderList() {
+  $("count").textContent = state.subs.length;
+  $("hideScores").checked = !!state.settings.scores_hidden;
+  if (!ready) return;
+  const ranked = Game.rank(state.subs);
+  $("list").innerHTML = ranked.length
+    ? ranked.map((s, i) => `<tr>
+        <td class="mut">${i + 1}</td>
+        <td class="team">${esc(s.team)}</td>
+        <td class="picks">${s.parts.map((p) => `${monthLabel(p.date)} · ${p.amt}`).join("<br>")}</td>
+        <td class="n">${fmt(s.value)}</td>
+        <td class="n"><button class="sec sm" data-edit="${s.id}">Edit</button> <button class="danger sm" data-del="${s.id}">Delete</button></td>
+      </tr>`).join("")
+    : `<tr><td class="empty" colspan="5">No entries yet.</td></tr>`;
+}
+$("list").onclick = async (e) => {
+  const ed = e.target.closest("[data-edit]"), del = e.target.closest("[data-del]");
+  if (ed) return startEdit(Number(ed.dataset.edit));
+  if (del) {
+    const id = Number(del.dataset.del), s = state.subs.find((x) => x.id === id);
+    if (!s || !confirm(`Delete “${s.team}”? This can't be undone.`)) return;
+    del.disabled = true;
+    const { error } = await sb.rpc("delete_submission", { p_pass: pass, p_id: id });
+    if (error) { del.disabled = false; return alert(errText(error)); }
+    if (editingId === id) stopEdit();
+    live.refresh();
+  }
+};
+$("hideScores").onchange = async (e) => {
+  const want = e.target.checked;
+  const { error } = await sb.rpc("set_scores_hidden", { p_pass: pass, p_hidden: want });
+  if (error) { e.target.checked = !want; alert(errText(error)); }
+  else live.refresh();
+};
+
+// ---------- Boot ----------
+buildRows();
+Game.load().then(() => { ready = true; renderList(); }).catch((e) => msg($("formMsg"), e.message, "err"));
+const live = watchGame((s) => { state = s; renderList(); checkTeam(); }, (on) => setLive($("live"), on));
+const saved = store.get();
+if (saved) unlock(saved, true);
+</script>
+</body>
+</html>
