@@ -1,4 +1,4 @@
-# Gold Peak Challenge
+# Den stora Ekonomikumfesten: gold investing game
 
 Library quiz game: for each decade (1970s–2010s) a team picks the month they think gold peaked and how many coins to invest there.
 
