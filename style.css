@@ -132,6 +132,12 @@ kbd.onbtn{margin-left:6px;font-size:.66rem;background:rgba(0,0,0,.1);border-colo
 .switch input:focus-visible + .track{outline:2px solid var(--acc);outline-offset:2px}
 
 .scroll{overflow-x:auto;-webkit-overflow-scrolling:touch}
+details.answers summary{display:flex;align-items:baseline;gap:12px;flex-wrap:wrap;cursor:pointer;list-style:none}
+details.answers summary::-webkit-details-marker{display:none}
+details.answers summary h2::before{content:"▸";display:inline-block;width:1.1em;color:var(--mut);transition:transform .15s}
+details.answers[open] summary h2::before{transform:rotate(90deg)}
+details.answers[open] summary{margin-bottom:12px}
+details.answers p{margin:12px 0 0}
 table{width:100%;border-collapse:collapse}
 th,td{text-align:left;padding:10px 8px;border-bottom:1px solid var(--line);vertical-align:middle}
 th{font-size:.72rem;text-transform:uppercase;letter-spacing:.06em;color:var(--mut);font-weight:600}

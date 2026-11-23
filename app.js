@@ -60,6 +60,17 @@ const Game = {
     return !hit || (base && hit.key < base.key) ? base : hit;
   },
 
+  // Every calendar day in decade i that scores as well as the peak
+  // (ties, plus closed days that carry the peak price forward).
+  bestDays(i) {
+    const [a, b] = DECADES[i], out = [];
+    for (let t = Date.UTC(a, 0, 1); t <= Date.UTC(b, 11, 31); t += 864e5) {
+      const key = new Date(t).toISOString().slice(0, 10), e = this.entry(key, i);
+      if (e && e.price === this.peaks[i].price) out.push(key);
+    }
+    return out;
+  },
+
   // Returns {value, invested, profit, perfect, pct, parts[]}
   score(sub) {
     let value = 0, invested = 0, perfect = 0;

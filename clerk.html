@@ -9,7 +9,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="style.css?v=8">
+<link rel="stylesheet" href="style.css?v=9">
 </head>
 <body>
 <main class="wide">
@@ -64,6 +64,18 @@
       </form>
     </div>
 
+    <!-- Answer key (closed by default so players glancing at the screen don't see it) -->
+    <details class="card answers">
+      <summary><h2>Answer key</h2><span class="mut small">Best days per decade. Don't show the players.</span></summary>
+      <div class="scroll">
+        <table>
+          <thead><tr><th>Decade</th><th>Best day(s)</th><th class="n">Peak price</th><th class="n">Decade start</th><th class="n">Growth per coin</th></tr></thead>
+          <tbody id="answerList"><tr><td class="empty" colspan="5">Loading…</td></tr></tbody>
+        </table>
+      </div>
+      <p class="small mut" id="answerFoot"></p>
+    </details>
+
     <!-- Entries -->
     <div class="card">
       <div class="listhead">
@@ -85,7 +97,7 @@
 <div class="toast" id="toast" role="status"></div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
-<script src="app.js?v=6"></script>
+<script src="app.js?v=7"></script>
 <script>
 const $ = (id) => document.getElementById(id);
 const PASS_KEY = "goldpeak.pass";
@@ -345,6 +357,32 @@ $("sheet").onsubmit = async (e) => {
   live.refresh();
 };
 
+// ---------- Answer key ----------
+// Groups consecutive days: ["1979-12-28", …, "1979-12-31"] → "28–31 Dec 1979"
+function dayRanges(keys) {
+  const runs = [];
+  keys.forEach((k) => {
+    const last = runs[runs.length - 1];
+    if (last && Date.parse(k) - Date.parse(last[1]) === 864e5) last[1] = k; else runs.push([k, k]);
+  });
+  const wd = (k) => new Date(k + "T12:00:00Z").toLocaleDateString("en-GB", { weekday: "short", timeZone: "UTC" });
+  return runs.map(([x, y]) => {
+    if (x === y) return wd(x) + " " + dateLabel(x);
+    const [, xm] = x.split("-"), [, ym] = y.split("-");
+    return xm === ym ? `${+x.slice(8)}–${dateLabel(y)}` : `${dateLabel(x)} – ${dateLabel(y)}`;
+  });
+}
+function renderAnswers() {
+  let perfect = 0;
+  $("answerList").innerHTML = DECADES.map(([a], i) => {
+    const pk = Game.peaks[i], base = Game.bases[i], g = pk.price / base.price;
+    perfect += MAX_COINS * g;
+    return `<tr><td><b>${a}s</b></td><td>${dayRanges(Game.bestDays(i)).join("<br>")}</td>
+      <td class="n">$${fmt(pk.price)}</td><td class="n">$${fmt(base.price)} <span class="mut">(${dateLabel(base.key)})</span></td><td class="n"><b>×${fmt(g, 3)}</b></td></tr>`;
+  }).join("");
+  $("answerFoot").innerHTML = `Perfect sheet (${MAX_COINS} coins on the best day of every decade): <b>${fmt(perfect)}</b>. Days the market was closed use the last price before them, so they can tie with the peak.`;
+}
+
 // ---------- List ----------
 function renderList() {
   $("count").textContent = state.subs.length;
@@ -388,7 +426,7 @@ $("hideScores").onchange = async (e) => {
 // ---------- Boot ----------
 buildRows();
 DECADES.forEach((_, i) => paint(i));
-Game.load().then(() => { ready = true; renderList(); }).catch((e) => msg(e.message, "err"));
+Game.load().then(() => { ready = true; renderList(); renderAnswers(); }).catch((e) => msg(e.message, "err"));
 const live = watchGame((s) => { state = s; renderList(); checkTeam(); }, (on) => setLive($("live"), on));
 const saved = store.get();
 if (saved) unlock(saved, true);
