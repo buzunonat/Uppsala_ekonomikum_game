@@ -109,6 +109,8 @@ kbd.onbtn{margin-left:6px;font-size:.66rem;background:rgba(0,0,0,.1);border-colo
 .daybox input{border:0!important;box-shadow:none!important;background:transparent!important;text-align:center;font-size:1.3rem;font-weight:700;font-variant-numeric:tabular-nums;padding:2px 0;min-height:34px;width:100%}
 .daybox.bad{border-color:var(--bad);background:color-mix(in srgb,var(--bad) 10%,var(--bg))}
 .daybox.bad span{color:var(--bad)}
+.coinbox.bad{border-color:var(--bad);background:color-mix(in srgb,var(--bad) 10%,var(--bg))}
+.coinbox.bad span{color:var(--bad)}
 
 .sheetfoot{display:flex;align-items:center;gap:10px;margin-top:16px;flex-wrap:wrap}
 .sheetfoot button{min-height:50px}

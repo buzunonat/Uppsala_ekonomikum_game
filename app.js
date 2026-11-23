@@ -6,6 +6,7 @@ const SUPABASE_KEY = "sb_publishable_Nco-2TfWYBa2ij9KbJ-pJQ_tqwMVgMR";
 const PRICES_URL = "gold-price-history.csv";
 
 const DECADES = [[1970, 1979], [1980, 1989], [1990, 1999], [2000, 2009], [2010, 2019]];
+const MAX_COINS = 12; // most coins a team may put in one decade
 const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
 const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY, {
@@ -135,7 +136,7 @@ const ERRORS = {
   team_taken: "That team name is already taken. Pick another name.",
   bad_team: "Team name must be 1–40 characters.",
   bad_date: "Each pick must be a real date inside its own decade.",
-  bad_amount: "Coins must be whole numbers, 0 or more.",
+  bad_amount: "Coins must be whole numbers from 0 to 12 per decade.",
   bad_sheet: "The sheet needs all five decades.",
   not_found: "That entry no longer exists (someone may have deleted it).",
 };

@@ -9,7 +9,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="style.css?v=7">
+<link rel="stylesheet" href="style.css?v=8">
 </head>
 <body>
 <main class="wide">
@@ -50,6 +50,7 @@
           <li>Year: last digit <kbd>5</kbd> → 1975</li>
           <li>Month: number <kbd>3</kbd> → Mar · <kbd>0</kbd><kbd>1</kbd> → Jan</li>
           <li>Day: <kbd>1</kbd><kbd>4</kbd> → 14th · <kbd>7</kbd> → 7th</li>
+          <li>Coins: 0–12 per decade</li>
           <li><kbd>Enter</kbd> next decade</li>
           <li><kbd>Ctrl</kbd>+<kbd>Enter</kbd> save · <kbd>Esc</kbd> clear</li>
         </ul>
@@ -84,7 +85,7 @@
 <div class="toast" id="toast" role="status"></div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
-<script src="app.js?v=5"></script>
+<script src="app.js?v=6"></script>
 <script>
 const $ = (id) => document.getElementById(id);
 const PASS_KEY = "goldpeak.pass";
@@ -133,7 +134,7 @@ function buildRows() {
         ${MONTHS.map((m, k) => `<button type="button" class="chip" tabindex="-1" role="radio" aria-checked="false" title="Type ${k === 0 ? "01" : k + 1}" data-i="${i}" data-m="${k + 1}"><kbd class="k">${k === 0 ? "01" : k + 1}</kbd><span class="v">${m}</span></button>`).join("")}
       </div>
       <label class="daybox" id="db${i}"><span>day</span><input type="text" class="day" id="d${i}" inputmode="numeric" placeholder="–" aria-label="${a}s day" maxlength="2"></label>
-      <label class="coinbox"><input type="text" class="coins" id="a${i}" inputmode="numeric" placeholder="0" aria-label="${a}s coins" maxlength="7"><span>coins</span><kbd class="enter" aria-hidden="true">↵</kbd></label>
+      <label class="coinbox"><input type="text" class="coins" id="a${i}" inputmode="numeric" placeholder="0" aria-label="${a}s coins" maxlength="2"><span>coins</span><kbd class="enter" aria-hidden="true">↵</kbd></label>
     </div>`).join("");
 
   DECADES.forEach((_, i) => {
@@ -168,11 +169,13 @@ function paint(i) {
   mg(i).querySelectorAll(".chip").forEach((c) => c.setAttribute("aria-checked", String(+c.dataset.m === s.m)));
   mg(i).classList.toggle("pending", !!monthBuf[i]);
   const c = coin(i).value;
+  const tooMany = c !== "" && +c > MAX_COINS;
+  coin(i).closest(".coinbox").classList.toggle("bad", tooMany);
   const badDay = !!s.d && !dayOk(i);
   $("db" + i).classList.toggle("bad", badDay);
   const when = s.y || s.m || s.d ? `${s.d || "?"} ${s.m ? MONTHS[s.m - 1] : "?"} ${s.y || "?"}` : "";
   $("sum" + i).textContent = when || c ? `${when || "—"}${c ? " · " + c + (c === "1" ? " coin" : " coins") : ""}` : "Not filled in";
-  $("dec" + i).classList.toggle("done", !!(s.y && s.m && dayOk(i) && c !== ""));
+  $("dec" + i).classList.toggle("done", !!(s.y && s.m && dayOk(i) && c !== "" && !tooMany));
 }
 
 function nextAfterCoins(i) { if (i < DECADES.length - 1) yg(i + 1).focus(); else $("sheet").requestSubmit(); }
@@ -226,8 +229,8 @@ function dayKey(e, i) {
 
 function coinKey(e, i) {
   if (e.key === "Enter" && !e.ctrlKey) { e.preventDefault(); nextAfterCoins(i); }
-  else if (e.key === "ArrowUp") { e.preventDefault(); coin(i).value = String((+coin(i).value || 0) + 1); coin(i).dispatchEvent(new Event("input")); }
-  else if (e.key === "ArrowDown") { e.preventDefault(); coin(i).value = String(Math.max(0, (+coin(i).value || 0) - 1)); coin(i).dispatchEvent(new Event("input")); }
+  else if (e.key === "ArrowUp") { e.preventDefault(); coin(i).value = String(Math.min(MAX_COINS, (+coin(i).value || 0) + 1)); coin(i).dispatchEvent(new Event("input")); }
+  else if (e.key === "ArrowDown") { e.preventDefault(); coin(i).value = String(Math.max(0, Math.min(MAX_COINS, (+coin(i).value || 0)) - 1)); coin(i).dispatchEvent(new Event("input")); }
 }
 
 $("team").addEventListener("keydown", (e) => { if (e.key === "Enter" && !e.ctrlKey) { e.preventDefault(); yg(0).focus(); } });
@@ -286,6 +289,8 @@ function validate(f) {
     }
   }
   if (f.amounts.some((a) => !Number.isInteger(a) || a < 0)) return { text: ERRORS.bad_amount };
+  const over = f.amounts.findIndex((a) => a > MAX_COINS);
+  if (over >= 0) return { text: `${DECADES[over][0]}s: at most ${MAX_COINS} coins per decade.`, focus: coin(over) };
   if (f.amounts.every((a) => a === 0)) return { text: "Invest at least one coin somewhere.", focus: coin(0) };
   return null;
 }

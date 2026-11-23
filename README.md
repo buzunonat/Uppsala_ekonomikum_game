@@ -1,6 +1,6 @@
 # Den stora Ekonomikumfesten: gold investing game
 
-Library quiz game: for each decade (1970s–2010s) a team picks the day they think gold peaked and how many coins to invest there.
+Library quiz game: for each decade (1970s–2010s) a team picks the day they think gold peaked and how many coins to invest there (0–12 coins per decade).
 
 - **`index.html`**: public leaderboard (put it on the big screen, share the link or a QR code). Updates live.
 - **`clerk.html`**: data-entry desk for the organizers. Needs the clerk passcode. Clerks can add, edit and delete entries, and hide scores until the reveal.
