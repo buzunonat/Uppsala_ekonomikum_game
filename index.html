@@ -180,7 +180,7 @@ html.calm h1,html.calm .medal,html.calm .crown,html.calm .block::after,html.calm
   <header>
     <div class="kicker">The gold investing game</div>
     <h1>Den stora Ekonomikumfesten</h1>
-    <p class="tag">Guess the month gold peaked in each decade. Invest your coins. Get gloriously rich (on paper).</p>
+    <p class="tag">Guess the day gold peaked in each decade. Invest your coins. Get gloriously rich (on paper).</p>
     <span class="live" id="live"><i></i> Connecting…</span>
   </header>
 
@@ -192,7 +192,7 @@ html.calm h1,html.calm .medal,html.calm .crown,html.calm .block::after,html.calm
 
   <section id="board" aria-live="polite"></section>
 
-  <p class="rules">Value = coins × (gold price in your month ÷ gold price at the start of that decade), inflation-adjusted. Profit = value − coins invested.</p>
+  <p class="rules">Value = coins × (gold price on your day ÷ gold price at the start of that decade). Weekends and holidays use the last closing price before them. Profit = value − coins invested.</p>
   <a class="staff" href="clerk.html">Clerk desk</a>
 </main>
 
@@ -207,7 +207,7 @@ html.calm h1,html.calm .medal,html.calm .crown,html.calm .block::after,html.calm
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
-<script src="app.js?v=4"></script>
+<script src="app.js?v=5"></script>
 <script>
 // Add ?motion=full to the URL to force all animations on (some PCs have "reduce motion" switched on).
 const REDUCED = !/[?&]motion=full\b/.test(location.search) && matchMedia("(prefers-reduced-motion: reduce)").matches;

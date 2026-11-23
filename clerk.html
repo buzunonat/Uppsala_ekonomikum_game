@@ -9,7 +9,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="style.css?v=6">
+<link rel="stylesheet" href="style.css?v=7">
 </head>
 <body>
 <main class="wide">
@@ -49,6 +49,7 @@
         <ul class="howto">
           <li>Year: last digit <kbd>5</kbd> → 1975</li>
           <li>Month: number <kbd>3</kbd> → Mar · <kbd>0</kbd><kbd>1</kbd> → Jan</li>
+          <li>Day: <kbd>1</kbd><kbd>4</kbd> → 14th · <kbd>7</kbd> → 7th</li>
           <li><kbd>Enter</kbd> next decade</li>
           <li><kbd>Ctrl</kbd>+<kbd>Enter</kbd> save · <kbd>Esc</kbd> clear</li>
         </ul>
@@ -71,7 +72,7 @@
       </div>
       <div class="scroll">
         <table>
-          <thead><tr><th>#</th><th>Team</th><th>Picks (month · coins)</th><th class="n">Value</th><th></th></tr></thead>
+          <thead><tr><th>#</th><th>Team</th><th>Picks (date · coins)</th><th class="n">Value</th><th></th></tr></thead>
           <tbody id="list"><tr><td class="empty" colspan="5">Loading…</td></tr></tbody>
         </table>
       </div>
@@ -83,7 +84,7 @@
 <div class="toast" id="toast" role="status"></div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
-<script src="app.js?v=4"></script>
+<script src="app.js?v=5"></script>
 <script>
 const $ = (id) => document.getElementById(id);
 const PASS_KEY = "goldpeak.pass";
@@ -115,9 +116,11 @@ $("gateForm").onsubmit = async (e) => {
 $("lock").onclick = (e) => { e.preventDefault(); store.set(null); location.reload(); };
 
 // ---------- Fast entry rows ----------
-const sel = DECADES.map(() => ({ y: null, m: null }));
+const sel = DECADES.map(() => ({ y: null, m: null, d: null }));
 const monthBuf = DECADES.map(() => "");
-const yg = (i) => $("yg" + i), mg = (i) => $("mg" + i), coin = (i) => $("a" + i);
+const yg = (i) => $("yg" + i), mg = (i) => $("mg" + i), dayIn = (i) => $("d" + i), coin = (i) => $("a" + i);
+// Valid day for the picked year/month (any 1–31 while year or month is still missing).
+const dayOk = (i) => { const s = sel[i]; return !!s.d && s.d >= 1 && s.d <= (s.y && s.m ? daysInMonth(s.y, s.m) : 31); };
 
 function buildRows() {
   $("rows").innerHTML = DECADES.map(([a], i) => `
@@ -129,6 +132,7 @@ function buildRows() {
       <div class="seg months" id="mg${i}" tabindex="0" role="radiogroup" aria-label="${a}s month">
         ${MONTHS.map((m, k) => `<button type="button" class="chip" tabindex="-1" role="radio" aria-checked="false" title="Type ${k === 0 ? "01" : k + 1}" data-i="${i}" data-m="${k + 1}"><kbd class="k">${k === 0 ? "01" : k + 1}</kbd><span class="v">${m}</span></button>`).join("")}
       </div>
+      <label class="daybox" id="db${i}"><span>day</span><input type="text" class="day" id="d${i}" inputmode="numeric" placeholder="–" aria-label="${a}s day" maxlength="2"></label>
       <label class="coinbox"><input type="text" class="coins" id="a${i}" inputmode="numeric" placeholder="0" aria-label="${a}s coins" maxlength="7"><span>coins</span><kbd class="enter" aria-hidden="true">↵</kbd></label>
     </div>`).join("");
 
@@ -136,6 +140,9 @@ function buildRows() {
     yg(i).addEventListener("keydown", (e) => yearKey(e, i));
     mg(i).addEventListener("keydown", (e) => monthKey(e, i));
     mg(i).addEventListener("blur", () => { if (monthBuf[i]) { monthBuf[i] = ""; paint(i); } });
+    dayIn(i).addEventListener("keydown", (e) => dayKey(e, i));
+    dayIn(i).addEventListener("input", () => dayInput(i));
+    dayIn(i).addEventListener("focus", () => dayIn(i).select());
     coin(i).addEventListener("keydown", (e) => coinKey(e, i));
     coin(i).addEventListener("input", () => { const v = coin(i).value.replace(/\D/g, ""); if (v !== coin(i).value) coin(i).value = v; paint(i); updateTotal(); });
     coin(i).addEventListener("focus", () => coin(i).select());
@@ -144,7 +151,7 @@ function buildRows() {
     const c = e.target.closest(".chip"); if (!c) return;
     const i = +c.dataset.i;
     if (c.dataset.y) { sel[i].y = +c.dataset.y; paint(i); mg(i).focus(); }
-    else { monthBuf[i] = ""; sel[i].m = +c.dataset.m; paint(i); coin(i).focus(); }
+    else { monthBuf[i] = ""; sel[i].m = +c.dataset.m; paint(i); dayIn(i).focus(); }
   });
   $("rows").addEventListener("focusin", (e) => {
     const d = e.target.closest(".dec");
@@ -161,9 +168,11 @@ function paint(i) {
   mg(i).querySelectorAll(".chip").forEach((c) => c.setAttribute("aria-checked", String(+c.dataset.m === s.m)));
   mg(i).classList.toggle("pending", !!monthBuf[i]);
   const c = coin(i).value;
-  const when = s.y && s.m ? MONTHS[s.m - 1] + " " + s.y : s.y ? "? " + s.y : s.m ? MONTHS[s.m - 1] + " ?" : "";
+  const badDay = !!s.d && !dayOk(i);
+  $("db" + i).classList.toggle("bad", badDay);
+  const when = s.y || s.m || s.d ? `${s.d || "?"} ${s.m ? MONTHS[s.m - 1] : "?"} ${s.y || "?"}` : "";
   $("sum" + i).textContent = when || c ? `${when || "—"}${c ? " · " + c + (c === "1" ? " coin" : " coins") : ""}` : "Not filled in";
-  $("dec" + i).classList.toggle("done", !!(s.y && s.m && c !== ""));
+  $("dec" + i).classList.toggle("done", !!(s.y && s.m && dayOk(i) && c !== ""));
 }
 
 function nextAfterCoins(i) { if (i < DECADES.length - 1) yg(i + 1).focus(); else $("sheet").requestSubmit(); }
@@ -179,14 +188,14 @@ function yearKey(e, i) {
 
 function monthKey(e, i) {
   const s = sel[i];
-  const done = () => { monthBuf[i] = ""; paint(i); coin(i).focus(); };
+  const done = () => { monthBuf[i] = ""; paint(i); dayIn(i).focus(); };
   if (/^[0-9]$/.test(e.key)) {
     e.preventDefault();
     const d = +e.key, buf = monthBuf[i];
     if (buf === "0") { if (d >= 1) { s.m = d; done(); } return; }
     if (buf === "1") {
       if (d <= 2) { s.m = 10 + d; done(); }
-      else { s.m = 1; done(); coin(i).value = String(d); coin(i).dispatchEvent(new Event("input")); } // "1" then 3–9 = January, digit goes to coins
+      else { s.m = 1; done(); dayIn(i).value = String(d); dayInput(i); } // "1" then 3–9 = January, digit goes to the day
       return;
     }
     if (d === 0) { monthBuf[i] = "0"; paint(i); return; }
@@ -196,6 +205,23 @@ function monthKey(e, i) {
   else if (e.key === "ArrowLeft" || e.key === "ArrowDown") { e.preventDefault(); monthBuf[i] = ""; s.m = Math.max(1, (s.m ?? 2) - 1); paint(i); }
   else if (e.key === "Backspace" || e.key === "Delete") { e.preventDefault(); monthBuf[i] = ""; s.m = null; paint(i); }
   else if ((e.key === "Enter" && !e.ctrlKey) || e.key === " ") { e.preventDefault(); if (s.m) done(); }
+}
+
+// Day box: two digits, or one digit that can't start a longer day (4–9, or 3 in February) jumps to coins.
+function dayInput(i) {
+  const el = dayIn(i), v = el.value.replace(/\D/g, "").slice(0, 2);
+  if (v !== el.value) el.value = v;
+  sel[i].d = v ? +v : null;
+  paint(i);
+  const s = sel[i], maxD = s.y && s.m ? daysInMonth(s.y, s.m) : 31;
+  if ((v.length === 2 || (v.length === 1 && +v * 10 > maxD)) && dayOk(i)) coin(i).focus();
+}
+function dayKey(e, i) {
+  const s = sel[i], maxD = s.y && s.m ? daysInMonth(s.y, s.m) : 31;
+  const set = (d) => { dayIn(i).value = String(d); s.d = d; paint(i); };
+  if (e.key === "Enter" && !e.ctrlKey) { e.preventDefault(); if (dayOk(i)) coin(i).focus(); }
+  else if (e.key === "ArrowUp") { e.preventDefault(); set(Math.min(maxD, (s.d || 0) + 1)); }
+  else if (e.key === "ArrowDown") { e.preventDefault(); set(Math.max(1, Math.min(maxD, (s.d || 2) - 1))); }
 }
 
 function coinKey(e, i) {
@@ -215,11 +241,11 @@ function readForm() {
   return {
     team: $("team").value.trim(),
     amounts: DECADES.map((_, i) => (coin(i).value === "" ? 0 : Number(coin(i).value))),
-    // A decade with 0 coins doesn't need a pick: its month can't change the score.
+    // A decade with 0 coins doesn't need a pick: its date can't change the score.
     dates: DECADES.map(([a], i) => {
       const s = sel[i];
-      if (s.y && s.m) return s.y + "-" + String(s.m).padStart(2, "0");
-      return (coin(i).value === "" || +coin(i).value === 0) && !s.y && !s.m ? a + "-01" : "";
+      if (s.y && s.m && dayOk(i)) return s.y + "-" + String(s.m).padStart(2, "0") + "-" + String(s.d).padStart(2, "0");
+      return (coin(i).value === "" || +coin(i).value === 0) && !s.y && !s.m && !s.d ? a + "-01-01" : "";
     }),
   };
 }
@@ -229,8 +255,9 @@ function fillForm(s) {
   $("team").value = s ? s.team : "";
   DECADES.forEach((_, i) => {
     monthBuf[i] = "";
-    if (s) { const [y, m] = s.dates[i].split("-"); sel[i].y = +y; sel[i].m = +m; coin(i).value = String(s.amounts[i]); }
-    else { sel[i].y = sel[i].m = null; coin(i).value = ""; }
+    // Old month-only entries ("YYYY-MM") open as the 1st, which is how they are scored.
+    if (s) { const [y, m, d] = s.dates[i].split("-"); sel[i].y = +y; sel[i].m = +m; sel[i].d = d ? +d : 1; dayIn(i).value = String(sel[i].d); coin(i).value = String(s.amounts[i]); }
+    else { sel[i].y = sel[i].m = sel[i].d = null; dayIn(i).value = ""; coin(i).value = ""; }
     paint(i);
   });
   updateTotal(); checkTeam();
@@ -253,7 +280,9 @@ function validate(f) {
   for (let i = 0; i < DECADES.length; i++) {
     if (!f.dates[i]) {
       const s = sel[i];
-      return { text: `${DECADES[i][0]}s: pick a ${s.y ? "month" : "year"}.`, focus: s.y ? mg(i) : yg(i) };
+      if (!s.y || !s.m) return { text: `${DECADES[i][0]}s: pick a ${s.y ? "month" : "year"}.`, focus: s.y ? mg(i) : yg(i) };
+      if (!s.d) return { text: `${DECADES[i][0]}s: enter a day.`, focus: dayIn(i) };
+      return { text: `${DECADES[i][0]}s: ${MONTHS[s.m - 1]} ${s.y} has no day ${s.d}.`, focus: dayIn(i) };
     }
   }
   if (f.amounts.some((a) => !Number.isInteger(a) || a < 0)) return { text: ERRORS.bad_amount };
@@ -322,7 +351,7 @@ function renderList() {
     ? ranked.map((s) => `<tr class="${flashKey && teamKey(s.team) === flashKey ? "flash" : ""}">
         <td class="mut">${s.rank}</td>
         <td class="team">${esc(s.team)}</td>
-        <td><div class="picks">${s.parts.map((p) => `<span class="pick">${monthLabel(p.date)} · <b>${p.amt}</b></span>`).join("")}</div></td>
+        <td><div class="picks">${s.parts.map((p) => `<span class="pick">${dateLabel(p.date)} · <b>${p.amt}</b></span>`).join("")}</div></td>
         <td class="n">${fmt(s.value)}</td>
         <td class="n"><button class="sec sm" data-edit="${s.id}">Edit</button> <button class="danger sm" data-del="${s.id}">Delete</button></td>
       </tr>`).join("")

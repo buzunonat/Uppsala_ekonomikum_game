@@ -3,7 +3,7 @@
 // All writes go through functions that check the clerk passcode.
 const SUPABASE_URL = "https://frpbohlwdcfahpmkaqlk.supabase.co";
 const SUPABASE_KEY = "sb_publishable_Nco-2TfWYBa2ij9KbJ-pJQ_tqwMVgMR";
-const PRICES_URL = "real-gold-price.csv";
+const PRICES_URL = "gold-price-history.csv";
 
 const DECADES = [[1970, 1979], [1980, 1989], [1990, 1999], [2000, 2009], [2010, 2019]];
 const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
@@ -14,38 +14,49 @@ const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY, {
 
 // ---------- Prices & scoring ----------
 // Rule (from the original game sheet): for each decade, coins invested grow by
-// price(chosen month) / price(first month of that decade).
-// "Perfect" = the same coins invested at that decade's peak month.
+// price(chosen day) / price(first trading day of that decade).
+// "Perfect" = the same coins invested on that decade's highest day.
+// The price file only has trading days. A weekend or holiday pick uses the last
+// closing price before it (never earlier than the decade's first trading day).
+// Old month-only picks ("YYYY-MM") count as the 1st of that month.
 const Game = {
-  prices: new Map(), // "YYYY-MM" -> real price
-  bases: [],         // first month of each decade
-  peaks: [],         // highest month of each decade
+  days: [],   // sorted [{key: "YYYY-MM-DD", price}]
+  bases: [],  // first trading day of each decade
+  peaks: [],  // highest day of each decade
 
   async load() {
     const res = await fetch(PRICES_URL, { cache: "no-cache" });
     if (!res.ok) throw new Error("Could not load price data (" + res.status + ")");
     const text = await res.text();
+    const days = [];
     text.split(/\r?\n/).forEach((line) => {
       const p = line.split(/[,;\t]/).map((s) => s.trim());
-      const m = /^(\d{4})-(\d{1,2})/.exec(p[0] || "");
+      const m = /^(\d{4})-(\d{1,2})(?:-(\d{1,2}))?$/.exec(p[0] || "");
       const price = parseFloat(p[1]);
-      if (m && price > 0) this.prices.set(m[1] + "-" + m[2].padStart(2, "0"), price);
+      if (m && price > 0) days.push({ key: m[1] + "-" + m[2].padStart(2, "0") + "-" + (m[3] || "1").padStart(2, "0"), price });
     });
-    this.bases = DECADES.map(([a]) => this.entry(a + "-01"));
+    days.sort((x, y) => (x.key < y.key ? -1 : x.key > y.key ? 1 : 0));
+    this.days = days;
+    this.bases = DECADES.map(([a, b]) => days.find((d) => d.key >= a + "-01-01" && d.key <= b + "-12-31") || null);
     this.peaks = DECADES.map(([a, b]) => {
       let best = null;
-      for (let y = a; y <= b; y++) for (let mo = 1; mo <= 12; mo++) {
-        const e = this.entry(y + "-" + String(mo).padStart(2, "0"));
-        if (e && (!best || e.price > best.price)) best = e;
-      }
+      for (const d of days) if (d.key >= a + "-01-01" && d.key <= b + "-12-31" && (!best || d.price > best.price)) best = d;
       return best;
     });
     if (this.bases.some((x) => !x) || this.peaks.some((x) => !x)) throw new Error("Price data is missing a decade");
   },
 
-  entry(key) {
-    const price = this.prices.get(key);
-    return price ? { key, price } : null;
+  // Price for a picked date in decade i: last trading day on or before it.
+  entry(date, i) {
+    const key = date && date.length === 7 ? date + "-01" : date;
+    if (!key || !/^\d{4}-\d{2}-\d{2}$/.test(key)) return null;
+    let lo = 0, hi = this.days.length - 1, hit = null;
+    while (lo <= hi) {
+      const mid = (lo + hi) >> 1;
+      if (this.days[mid].key <= key) { hit = this.days[mid]; lo = mid + 1; } else hi = mid - 1;
+    }
+    const base = this.bases[i];
+    return !hit || (base && hit.key < base.key) ? base : hit;
   },
 
   // Returns {value, invested, profit, perfect, pct, parts[]}
@@ -53,7 +64,7 @@ const Game = {
     let value = 0, invested = 0, perfect = 0;
     const parts = DECADES.map((_, i) => {
       const amt = Number(sub.amounts[i]) || 0;
-      const e = this.entry(sub.dates[i]);
+      const e = this.entry(sub.dates[i], i);
       const growth = e ? e.price / this.bases[i].price : 0;
       const v = amt * growth;
       value += v;
@@ -108,7 +119,8 @@ function watchGame(onChange, onStatus) {
 // ---------- Helpers ----------
 const fmt = (v, d = 2) => v.toLocaleString("en-US", { minimumFractionDigits: d, maximumFractionDigits: d });
 const fmtSigned = (v) => (v > 0 ? "+" : v < 0 ? "−" : "") + fmt(Math.abs(v));
-const monthLabel = (key) => { const [y, m] = key.split("-"); return MONTHS[+m - 1] + " " + y; };
+const dateLabel = (key) => { const [y, m, d] = key.split("-"); return (d ? +d + " " : "") + MONTHS[+m - 1] + " " + y; };
+const daysInMonth = (y, m) => new Date(Date.UTC(y, m, 0)).getUTCDate();
 const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 const teamKey = (s) => s.trim().toLowerCase();
 
@@ -122,7 +134,7 @@ const ERRORS = {
   wrong_passcode: "Wrong passcode.",
   team_taken: "That team name is already taken. Pick another name.",
   bad_team: "Team name must be 1–40 characters.",
-  bad_date: "Each pick must be a month inside its own decade.",
+  bad_date: "Each pick must be a real date inside its own decade.",
   bad_amount: "Coins must be whole numbers, 0 or more.",
   bad_sheet: "The sheet needs all five decades.",
   not_found: "That entry no longer exists (someone may have deleted it).",

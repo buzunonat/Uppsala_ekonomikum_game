@@ -66,7 +66,7 @@ kbd{display:inline-block;min-width:1.5em;text-align:center;font:600 .74rem/1 ui-
 
 /* Decade rows */
 .decs{border:1px solid var(--line);border-radius:14px;overflow:hidden}
-.dec{display:grid;grid-template-columns:104px minmax(0,10fr) minmax(0,12fr) 128px;gap:14px;align-items:center;padding:12px 14px;background:var(--surface);transition:background .15s}
+.dec{display:grid;grid-template-columns:104px minmax(0,10fr) minmax(0,12fr) 74px 120px;gap:14px;align-items:center;padding:12px 14px;background:var(--surface);transition:background .15s}
 .dec + .dec{border-top:1px solid var(--line)}
 .dec.active{background:var(--acc-soft)}
 .lbl b{display:flex;align-items:center;gap:6px;font:800 1.15rem/1.1 var(--serif)}
@@ -101,6 +101,14 @@ kbd.onbtn{margin-left:6px;font-size:.66rem;background:rgba(0,0,0,.1);border-colo
 .coinbox:focus-within{border-color:var(--acc);box-shadow:0 0 0 3px color-mix(in srgb,var(--acc) 28%,transparent)}
 .coinbox input{border:0!important;box-shadow:none!important;background:transparent!important;text-align:right;font-size:1.15rem;font-weight:700;font-variant-numeric:tabular-nums;padding:8px 6px;min-height:42px;width:100%}
 .coinbox span{font-size:.8rem;color:var(--mut);font-weight:500;letter-spacing:0;margin:0}
+
+/* Day */
+.daybox{display:flex;flex-direction:column;justify-content:center;min-height:70px;background:var(--bg);border:1px solid var(--line2);border-radius:11px;padding:4px 6px;margin:0;cursor:text}
+.daybox:focus-within{border-color:var(--acc);box-shadow:0 0 0 3px color-mix(in srgb,var(--acc) 28%,transparent)}
+.daybox span{font-size:.7rem;color:var(--mut);font-weight:500;letter-spacing:0;margin:0;text-align:center}
+.daybox input{border:0!important;box-shadow:none!important;background:transparent!important;text-align:center;font-size:1.3rem;font-weight:700;font-variant-numeric:tabular-nums;padding:2px 0;min-height:34px;width:100%}
+.daybox.bad{border-color:var(--bad);background:color-mix(in srgb,var(--bad) 10%,var(--bg))}
+.daybox.bad span{color:var(--bad)}
 
 .sheetfoot{display:flex;align-items:center;gap:10px;margin-top:16px;flex-wrap:wrap}
 .sheetfoot button{min-height:50px}
@@ -139,10 +147,11 @@ tr.flash td{animation:flash 2.2s ease-out}
 .toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%) translateY(20px);background:var(--fg);color:var(--bg);padding:12px 18px;border-radius:12px;font-weight:600;opacity:0;transition:.25s;pointer-events:none;z-index:10;max-width:calc(100% - 32px);box-shadow:var(--shadow)}
 .toast.on{opacity:1;transform:translateX(-50%)}
 
-@media (max-width:1000px){
-  .dec{grid-template-columns:1fr 140px;row-gap:8px}
+@media (max-width:1180px){
+  .dec{grid-template-columns:minmax(0,1fr) 74px 140px;row-gap:8px}
   .dec .lbl{grid-column:1;grid-row:1}
-  .dec .coinbox{grid-column:2;grid-row:1}
+  .dec .daybox{grid-column:2;grid-row:1}
+  .dec .coinbox{grid-column:3;grid-row:1}
   .dec .years,.dec .months{grid-column:1/-1}
 }
 @media (max-width:560px){
@@ -152,7 +161,8 @@ tr.flash td{animation:flash 2.2s ease-out}
   .seg.years{grid-template-columns:repeat(5,minmax(0,1fr))}
   .seg.months{grid-template-columns:repeat(6,minmax(0,1fr))}
   .seg .chip{min-height:52px}
-  .coinbox{min-height:50px}
+  .coinbox,.daybox{min-height:50px}
+  .dec{grid-template-columns:minmax(0,1fr) 60px 96px;column-gap:8px}
   .howto{display:none}
   .card{padding:16px}
 }
