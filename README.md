@@ -17,7 +17,7 @@ Library quiz game: for each decade (1970s–2010s) a team picks the day they thi
 
 ## Scoring
 
-For each decade: `coins × price(chosen day) ÷ price(first trading day of that decade)`, using **real** gold prices: `nominal × CPI(latest month) ÷ CPI(month of that day)`, so in today's dollars.
+For each decade: `coins × price(chosen day) ÷ price(2 Jan 1970, the first trading day of the game)`, using **real** gold prices: `nominal × CPI(latest month) ÷ CPI(month of that day)`, so in today's dollars. Put differently: a real gold index with 2 Jan 1970 = 100, and each coin is worth index ÷ 100.
 A weekend or holiday pick uses the last closing price before it. Older entries saved as just a month count as the 1st of that month.
 Total value = sum over the five decades. Ranked by total value (ties go to whoever submitted first).
 "% of perfect" compares the team to investing the same coins on each decade's highest day.

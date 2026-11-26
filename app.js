@@ -15,8 +15,9 @@ const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY, {
 });
 
 // ---------- Prices & scoring ----------
-// Rule (from the original game sheet): for each decade, coins invested grow by
-// price(chosen day) / price(first trading day of that decade).
+// Rule: in every decade, coins invested grow by
+// real price(chosen day) / real price(first trading day of the game, 2 Jan 1970).
+// That is the real gold index (2 Jan 1970 = 100) on the chosen day, divided by 100.
 // Prices are REAL (inflation-adjusted with US CPI-U, in dollars of the latest CPI month).
 // "Perfect" = the same coins invested on that decade's highest day.
 // The price file only has trading days. A weekend or holiday pick uses the last
@@ -108,11 +109,11 @@ const Game = {
     const parts = DECADES.map((_, i) => {
       const amt = Number(sub.amounts[i]) || 0;
       const e = this.entry(sub.dates[i], i);
-      const growth = e ? e.price / this.bases[i].price : 0;
+      const growth = e ? e.price / this.bases[0].price : 0;
       const v = amt * growth;
       value += v;
       invested += amt;
-      perfect += amt * (this.peaks[i].price / this.bases[i].price);
+      perfect += amt * (this.peaks[i].price / this.bases[0].price);
       return { amt, date: sub.dates[i], growth, value: v };
     });
     return { value, invested, profit: value - invested, perfect, pct: perfect ? (100 * value) / perfect : 0, parts };

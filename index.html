@@ -200,7 +200,7 @@ html.calm h1,html.calm .medal,html.calm .crown,html.calm .block::after,html.calm
 
   <section id="board" aria-live="polite"></section>
 
-  <p class="rules">Up to 12 coins per decade. Value = coins × (gold price on your day ÷ gold price at the start of that decade), using inflation-adjusted (real) gold prices. Weekends and holidays use the last closing price before them. Profit = value − coins invested.</p>
+  <p class="rules">Up to 12 coins per decade. Value = coins × (gold price on your day ÷ gold price on 2 Jan 1970), using inflation-adjusted (real) gold prices. Weekends and holidays use the last closing price before them. Profit = value − coins invested.</p>
   <a class="staff" href="clerk.html">Clerk desk</a>
 </main>
 
@@ -215,7 +215,7 @@ html.calm h1,html.calm .medal,html.calm .crown,html.calm .block::after,html.calm
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
-<script src="app.js?v=10"></script>
+<script src="app.js?v=11"></script>
 <script>
 // Add ?motion=full to the URL to force all animations on (some PCs have "reduce motion" switched on).
 const REDUCED = !/[?&]motion=full\b/.test(location.search) && matchMedia("(prefers-reduced-motion: reduce)").matches;

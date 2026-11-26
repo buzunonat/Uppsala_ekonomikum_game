@@ -69,7 +69,7 @@
       <summary><h2>Answer key</h2><span class="mut small">Best day per decade. Don't show the players.</span></summary>
       <div class="scroll">
         <table>
-          <thead><tr><th>Decade</th><th>Best day</th><th class="n">Peak price</th><th class="n">Decade start</th><th class="n">Growth per coin</th></tr></thead>
+          <thead><tr><th>Decade</th><th>Best day</th><th class="n">Peak price</th><th class="n">Gold index (Jan 1970 = 100)</th><th class="n">Growth per coin</th></tr></thead>
           <tbody id="answerList"><tr><td class="empty" colspan="5">Loading…</td></tr></tbody>
         </table>
       </div>
@@ -109,7 +109,7 @@
 <div class="toast" id="toast" role="status"><span id="toastText"></span><button type="button" class="sm hide" id="toastBtn">Undo</button></div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
-<script src="app.js?v=10"></script>
+<script src="app.js?v=11"></script>
 <script>
 const $ = (id) => document.getElementById(id);
 const PASS_KEY = "goldpeak.pass";
@@ -388,10 +388,10 @@ const wdLabel = (k) => new Date(k + "T12:00:00Z").toLocaleDateString("en-GB", { 
 function renderAnswers() {
   let perfect = 0;
   $("answerList").innerHTML = DECADES.map(([a], i) => {
-    const pk = Game.peaks[i], base = Game.bases[i], g = pk.price / base.price;
+    const pk = Game.peaks[i], g = pk.price / Game.bases[0].price;
     perfect += MAX_COINS * g;
     return `<tr><td><b>${a}s</b></td><td>${wdLabel(pk.key)}</td>
-      <td class="n">$${fmt(pk.price)}</td><td class="n">$${fmt(base.price)} <span class="mut">(${dateLabel(base.key)})</span></td><td class="n"><b>×${fmt(g, 3)}</b></td></tr>`;
+      <td class="n">$${fmt(pk.price)}</td><td class="n">${fmt(100 * g, 0)}</td><td class="n"><b>×${fmt(g, 3)}</b></td></tr>`;
   }).join("");
   $("answerFoot").innerHTML = `Perfect sheet (${MAX_COINS} coins on the best day of every decade): <b>${fmt(perfect)}</b>. Prices are inflation-adjusted (US CPI-U), in ${dateLabel(Game.cpiMonth)} dollars. A weekend or holiday right after the best day scores the same, since it uses the last closing price.`;
 }
@@ -475,16 +475,15 @@ function statsHTML(s, all, ra) {
   // Gold price on each pick as one real-price index: first trading day of the game (Jan 1970) = 100.
   const first = Game.bases[0], idx = (d) => fmt((100 * d.price) / first.price, 0);
   const picks = DECADES.map(([a], i) => {
-    const p = s.parts[i], e = Game.entry(p.date, i), base = Game.bases[i], pk = Game.peaks[i];
+    const p = s.parts[i], e = Game.entry(p.date, i), pk = Game.peaks[i];
     const pickCell = p.amt ? `${dateLabel(p.date)}${e.key !== p.date ? ` <span class="mut">(closed, uses ${dateLabel(e.key)})</span>` : ""}` : `<span class="mut">no coins</span>`;
     return `<tr><td><b>${a}s</b></td><td>${pickCell}</td>
       <td class="n">${p.amt ? `<b>${idx(e)}</b>` : "–"}</td>
-      <td class="n">${idx(base)}</td>
       <td class="n">${idx(pk)} <span class="mut">${dateLabel(pk.key)}</span></td>
       <td class="n">${p.amt}</td><td class="n">${fmt(p.value)}</td></tr>`;
   }).join("");
-  add("Gold prices", `<table class="mini"><thead><tr><th>Decade</th><th>Their pick</th><th class="n">Gold that day</th><th class="n">Decade start</th><th class="n">Best day</th><th class="n">Coins</th><th class="n">Value</th></tr></thead><tbody>${picks}</tbody></table>
-    <div class="small mut">Real gold price index: ${dateLabel(first.key)} = 100, inflation-adjusted. 700 means gold was worth 7× as much in real terms as in January 1970. Each coin grows by (gold that day ÷ decade start).</div>`);
+  add("Gold prices", `<table class="mini"><thead><tr><th>Decade</th><th>Their pick</th><th class="n">Gold that day</th><th class="n">Best day</th><th class="n">Coins</th><th class="n">Value</th></tr></thead><tbody>${picks}</tbody></table>
+    <div class="small mut">Real gold price index: ${dateLabel(first.key)} = 100, inflation-adjusted. 700 means gold was worth 7× as much in real terms as in January 1970, so each coin became 7. Value = coins × gold that day ÷ 100.</div>`);
   return `<dl class="stats">${rows.join("")}</dl>`;
 }
 
