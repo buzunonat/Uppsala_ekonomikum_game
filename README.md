@@ -6,14 +6,18 @@ Library quiz game: for each decade (1970s–2010s) a team picks the day they thi
 - **`clerk.html`**: data-entry desk for the organizers. Needs the clerk passcode. Clerks can add, edit and delete entries, and hide scores until the reveal.
   - Fast keyboard entry: team name → <kbd>Enter</kbd> → year digit (`5` = 1975) → month (`3` = Mar, `12` = Dec, `01` = Jan) → day (`14`, or `7` for the 7th) → coins → <kbd>Enter</kbd> to the next decade. <kbd>Enter</kbd> on the last coins box saves. <kbd>Esc</kbd> clears. Chips can also be clicked.
   - A decade with 0 coins needs no date.
+  - Click a team in the entries list for a short stats panel to read out: place, score, best decade, closest guess, and how they did against the RAs.
+  - Deleting an entry moves it to **Recently deleted** (bottom of the page), where it can be restored. The delete toast also has an Undo button.
+- **The RA line** (just a joke, not a prize threshold): the entry named "Tha Big RAs" (the economics department RAs) is not ranked as a team. The leaderboard draws a dashed joke line in the list below the podium, right above the first team that did worse than the RAs. Every newly entered team gets a pop-up saying whether it passed the RAs or did worse.
 - Leaderboard extras: podium celebration when someone breaks into the top 3 (once there are 5+ teams), and a "vault open" reveal when scores are un-hidden. Add `?motion=full` to the leaderboard URL to force all animations on a PC with "reduce motion" enabled.
+- **`cpi-u.csv`**: US CPI-U index (all items, 1982-84=100, not seasonally adjusted), monthly from 1968. Source: U.S. Bureau of Labor Statistics via FRED, series CPIAUCNS. Used to turn the nominal gold prices into real ones. Oct 2025 was never published (government shutdown), so it uses Sep 2025.
 - **`gold-price-history.csv`**: daily gold closing prices in USD per troy ounce (not inflation-adjusted), 1968–2026. Only trading days are listed. Source: GoldPrice.com (LBMA fixes + Metals.dev), CC BY 4.0, https://goldprice.com/gold-price-history
 - **`real-gold-price.csv`**: the older monthly inflation-adjusted prices, no longer used.
 - **`gold_peak_game_final.html`**: the original rules prototype.
 
 ## Scoring
 
-For each decade: `coins × price(chosen day) ÷ price(first trading day of that decade)`.
+For each decade: `coins × price(chosen day) ÷ price(first trading day of that decade)`, using **real** gold prices: `nominal × CPI(latest month) ÷ CPI(month of that day)`, so in today's dollars.
 A weekend or holiday pick uses the last closing price before it. Older entries saved as just a month count as the 1st of that month.
 Total value = sum over the five decades. Ranked by total value (ties go to whoever submitted first).
 "% of perfect" compares the team to investing the same coins on each decade's highest day.
@@ -27,6 +31,7 @@ To wipe all entries before the real event, run this in the Supabase SQL Editor:
 
 ```sql
 delete from public.submissions;
+delete from private.deleted_submissions; -- empties "Recently deleted"
 ```
 
 ## Updating the site

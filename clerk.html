@@ -9,7 +9,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="style.css?v=9">
+<link rel="stylesheet" href="style.css?v=11">
 </head>
 <body>
 <main class="wide">
@@ -66,10 +66,10 @@
 
     <!-- Answer key (closed by default so players glancing at the screen don't see it) -->
     <details class="card answers">
-      <summary><h2>Answer key</h2><span class="mut small">Best days per decade. Don't show the players.</span></summary>
+      <summary><h2>Answer key</h2><span class="mut small">Best day per decade. Don't show the players.</span></summary>
       <div class="scroll">
         <table>
-          <thead><tr><th>Decade</th><th>Best day(s)</th><th class="n">Peak price</th><th class="n">Decade start</th><th class="n">Growth per coin</th></tr></thead>
+          <thead><tr><th>Decade</th><th>Best day</th><th class="n">Peak price</th><th class="n">Decade start</th><th class="n">Growth per coin</th></tr></thead>
           <tbody id="answerList"><tr><td class="empty" colspan="5">Loading…</td></tr></tbody>
         </table>
       </div>
@@ -89,18 +89,31 @@
           <tbody id="list"><tr><td class="empty" colspan="5">Loading…</td></tr></tbody>
         </table>
       </div>
+      <p class="small mut tip">Click a team to see its stats.</p>
     </div>
+
+    <!-- Trash: deleted entries can be restored -->
+    <details class="card answers" id="trashCard">
+      <summary><h2>Recently deleted <span class="badge" id="trashCount">0</span></h2><span class="mut small">Deleted entries stay here and can be restored.</span></summary>
+      <div class="scroll">
+        <table>
+          <thead><tr><th>Team</th><th>Picks (date · coins)</th><th class="n">Deleted</th><th></th></tr></thead>
+          <tbody id="trashList"><tr><td class="empty" colspan="4">Nothing deleted.</td></tr></tbody>
+        </table>
+      </div>
+    </details>
 
     <p class="small mut">Signed in on this device. <a href="#" id="lock">Lock</a></p>
   </div>
 </main>
-<div class="toast" id="toast" role="status"></div>
+<div class="toast" id="toast" role="status"><span id="toastText"></span><button type="button" class="sm hide" id="toastBtn">Undo</button></div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
-<script src="app.js?v=7"></script>
+<script src="app.js?v=10"></script>
 <script>
 const $ = (id) => document.getElementById(id);
 const PASS_KEY = "goldpeak.pass";
+let openId = null, trash = [];
 let pass = null, state = { subs: [], settings: { scores_hidden: false } }, ready = false, editingId = null, flashKey = null;
 
 const store = {
@@ -109,13 +122,23 @@ const store = {
 };
 function msg(text, cls) { const el = $("formMsg"); el.textContent = text; el.className = "msg " + (cls || ""); }
 let toastTimer;
-function toast(text) { const t = $("toast"); t.textContent = text; t.classList.add("on"); clearTimeout(toastTimer); toastTimer = setTimeout(() => t.classList.remove("on"), 2200); }
+function toast(text, action) {
+  const t = $("toast"), b = $("toastBtn");
+  $("toastText").textContent = text;
+  b.classList.toggle("hide", !action);
+  b.onclick = action ? () => { t.classList.remove("on"); action.run(); } : null;
+  if (action) b.textContent = action.label;
+  t.classList.toggle("act", !!action);
+  t.classList.add("on"); clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => t.classList.remove("on"), action ? 7000 : 2200);
+}
 
 // ---------- Passcode ----------
 async function unlock(p, silent) {
   const { error } = await sb.rpc("verify_passcode", { p_pass: p });
   if (error) { if (!silent) { $("gateMsg").textContent = errText(error); $("gateMsg").className = "msg err"; } store.set(null); return false; }
   pass = p; store.set(p);
+  loadTrash();
   $("gate").classList.add("hide"); $("desk").classList.remove("hide");
   $("team").focus();
   return true;
@@ -358,46 +381,38 @@ $("sheet").onsubmit = async (e) => {
 };
 
 // ---------- Answer key ----------
-// Groups consecutive days: ["1979-12-28", …, "1979-12-31"] → "28–31 Dec 1979"
-function dayRanges(keys) {
-  const runs = [];
-  keys.forEach((k) => {
-    const last = runs[runs.length - 1];
-    if (last && Date.parse(k) - Date.parse(last[1]) === 864e5) last[1] = k; else runs.push([k, k]);
-  });
-  const wd = (k) => new Date(k + "T12:00:00Z").toLocaleDateString("en-GB", { weekday: "short", timeZone: "UTC" });
-  return runs.map(([x, y]) => {
-    if (x === y) return wd(x) + " " + dateLabel(x);
-    const [, xm] = x.split("-"), [, ym] = y.split("-");
-    return xm === ym ? `${+x.slice(8)}–${dateLabel(y)}` : `${dateLabel(x)} – ${dateLabel(y)}`;
-  });
-}
+// One best day per decade: the trading day with the highest real price.
+const wdLabel = (k) => new Date(k + "T12:00:00Z").toLocaleDateString("en-GB", { weekday: "short", timeZone: "UTC" }) + " " + dateLabel(k);
 function renderAnswers() {
   let perfect = 0;
   $("answerList").innerHTML = DECADES.map(([a], i) => {
     const pk = Game.peaks[i], base = Game.bases[i], g = pk.price / base.price;
     perfect += MAX_COINS * g;
-    return `<tr><td><b>${a}s</b></td><td>${dayRanges(Game.bestDays(i)).join("<br>")}</td>
+    return `<tr><td><b>${a}s</b></td><td>${wdLabel(pk.key)}</td>
       <td class="n">$${fmt(pk.price)}</td><td class="n">$${fmt(base.price)} <span class="mut">(${dateLabel(base.key)})</span></td><td class="n"><b>×${fmt(g, 3)}</b></td></tr>`;
   }).join("");
-  $("answerFoot").innerHTML = `Perfect sheet (${MAX_COINS} coins on the best day of every decade): <b>${fmt(perfect)}</b>. Days the market was closed use the last price before them, so they can tie with the peak.`;
+  $("answerFoot").innerHTML = `Perfect sheet (${MAX_COINS} coins on the best day of every decade): <b>${fmt(perfect)}</b>. Prices are inflation-adjusted (US CPI-U), in ${dateLabel(Game.cpiMonth)} dollars. A weekend or holiday right after the best day scores the same, since it uses the last closing price.`;
 }
 
 // ---------- List ----------
 function renderList() {
-  $("count").textContent = state.subs.length;
+  $("count").textContent = state.subs.filter((s) => !isRA(s)).length;
   $("hideScores").checked = !!state.settings.scores_hidden;
   if (!ready) return;
   const q = teamKey($("search").value);
-  const ranked = Game.rank(state.subs).map((s, i) => ({ ...s, rank: i + 1 })).filter((s) => !q || teamKey(s.team).includes(q));
+  const scored = Game.rank(state.subs), all = scored.filter((s) => !isRA(s)), ra = scored.find(isRA);
+  // The RA benchmark has no place number: it sits where its score would be.
+  let k = 0;
+  const ranked = scored.map((s) => ({ ...s, rank: isRA(s) ? "–" : ++k })).filter((s) => !q || teamKey(s.team).includes(q));
+  if (openId && !scored.some((s) => s.id === openId)) openId = null;
   $("list").innerHTML = ranked.length
-    ? ranked.map((s) => `<tr class="${flashKey && teamKey(s.team) === flashKey ? "flash" : ""}">
+    ? ranked.map((s) => `<tr class="row ${isRA(s) ? "bench" : ""} ${flashKey && teamKey(s.team) === flashKey ? "flash" : ""} ${s.id === openId ? "open" : ""}" data-open="${s.id}" aria-expanded="${s.id === openId}">
         <td class="mut">${s.rank}</td>
-        <td class="team">${esc(s.team)}</td>
+        <td class="team"><span class="caret" aria-hidden="true">▸</span>${esc(s.team)}${isRA(s) ? ' <span class="tag">econ department RAs</span>' : ""}</td>
         <td><div class="picks">${s.parts.map((p) => `<span class="pick">${dateLabel(p.date)} · <b>${p.amt}</b></span>`).join("")}</div></td>
         <td class="n">${fmt(s.value)}</td>
         <td class="n"><button class="sec sm" data-edit="${s.id}">Edit</button> <button class="danger sm" data-del="${s.id}">Delete</button></td>
-      </tr>`).join("")
+      </tr>${s.id === openId ? `<tr class="statrow"><td colspan="5">${statsHTML(s, all, ra)}</td></tr>` : ""}`).join("")
     : `<tr><td class="empty" colspan="5">${q ? "No team matches." : "No entries yet."}</td></tr>`;
   flashKey = null;
 }
@@ -407,14 +422,17 @@ $("list").onclick = async (e) => {
   if (ed) return startEdit(Number(ed.dataset.edit));
   if (del) {
     const id = Number(del.dataset.del), s = state.subs.find((x) => x.id === id);
-    if (!s || !confirm(`Delete “${s.team}”? This can't be undone.`)) return;
+    if (!s || !confirm(`Delete “${s.team}”? You can restore it later under “Recently deleted”.`)) return;
     del.disabled = true;
     const { error } = await sb.rpc("delete_submission", { p_pass: pass, p_id: id });
     if (error) { del.disabled = false; return alert(errText(error)); }
     if (editingId === id) resetForm();
-    toast(`Deleted “${s.team}”`);
-    live.refresh();
+    toast(`Deleted “${s.team}”`, { label: "Undo", run: () => restore(id) });
+    live.refresh(); loadTrash();
+    return;
   }
+  const row = e.target.closest("[data-open]");
+  if (row && !e.target.closest("button, a")) { const id = Number(row.dataset.open); openId = openId === id ? null : id; renderList(); }
 };
 $("hideScores").onchange = async (e) => {
   const want = e.target.checked;
@@ -422,6 +440,71 @@ $("hideScores").onchange = async (e) => {
   if (error) { e.target.checked = !want; alert(errText(error)); }
   else { toast(want ? "Scores hidden on leaderboard" : "Scores revealed! 🎉"); live.refresh(); }
 };
+
+// ---------- Team stats (click a team) ----------
+const plural = (n, w) => `${n} ${w}${n === 1 ? "" : "s"}`;
+const bestCache = {};
+// Days between a pick and the nearest day that scores as well as the peak.
+function daysOff(date, i) {
+  const best = bestCache[i] || (bestCache[i] = Game.bestDays(i).map((k) => Date.parse(k)));
+  const t = Date.parse(date.length === 7 ? date + "-01" : date);
+  return Math.round(Math.min(...best.map((b) => Math.abs(b - t))) / 864e5);
+}
+// all = ranked teams without the RA benchmark; ra = the RA sheet (scored) or undefined
+function statsHTML(s, all, ra) {
+  const rows = [], add = (k, v) => rows.push(`<dt>${k}</dt><dd>${v}</dd>`);
+  const used = s.parts.map((p, i) => ({ ...p, i, dec: DECADES[i][0] + "s" })).filter((p) => p.amt > 0);
+  const best = used.reduce((a, b) => (b.value > a.value ? b : a));
+  const sharp = used.map((p) => ({ ...p, off: daysOff(p.date, p.i) })).reduce((a, b) => (b.off < a.off ? b : a));
+
+  if (isRA(s)) add("Benchmark", "Our economics department RAs. Every team gets compared to this sheet.");
+  else add("Place", `<b>#${all.findIndex((x) => x.id === s.id) + 1}</b> of ${all.length}`);
+  add("Score", `<b>${fmt(s.value)}</b> from ${plural(s.invested, "coin")} (${Math.round(s.pct)}% of a perfect sheet)`);
+  add("Best decade", `<b>${best.dec}</b>, ${Math.round((100 * best.value) / s.value)}% of the points`);
+  add("Closest guess", sharp.off === 0 ? `<b>${sharp.dec}</b>, spot on the peak day!` : `<b>${sharp.dec}</b>, ${plural(sharp.off, "day")} from the peak`);
+
+  if (ra && !isRA(s)) {
+    const gap = s.value - ra.value;
+    add("vs the RAs", gap < 0
+      ? `<b>${fmt(-gap)} behind.</b> Congrats, you did worse than our econ department RAs.`
+      : gap > 0 ? `<b>${fmt(gap)} ahead!</b> You beat our econ department RAs.`
+      : `Exactly tied with our econ department RAs. Suspicious.`);
+  }
+  return `<dl class="stats">${rows.join("")}</dl>`;
+}
+
+// ---------- Recently deleted ----------
+async function loadTrash() {
+  if (!pass) return;
+  const { data, error } = await sb.rpc("list_deleted_submissions", { p_pass: pass });
+  if (error) return console.error(error);
+  trash = data || [];
+  renderTrash();
+}
+function renderTrash() {
+  $("trashCount").textContent = trash.length;
+  const when = (t) => new Date(t).toLocaleString("en-GB", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
+  $("trashList").innerHTML = trash.length
+    ? trash.map((s) => `<tr>
+        <td class="team">${esc(s.team)}</td>
+        <td><div class="picks">${s.dates.map((d, i) => `<span class="pick">${dateLabel(d)} · <b>${s.amounts[i]}</b></span>`).join("")}</div></td>
+        <td class="n mut">${when(s.deleted_at)}</td>
+        <td class="n"><button class="sec sm" data-restore="${s.id}">Restore</button></td>
+      </tr>`).join("")
+    : `<tr><td class="empty" colspan="4">Nothing deleted.</td></tr>`;
+}
+async function restore(id) {
+  const s = trash.find((x) => x.id === id);
+  const { error } = await sb.rpc("restore_submission", { p_pass: pass, p_id: id });
+  if (error) {
+    alert(/team_taken/.test(error.message) ? `Can't restore: another entry is already called “${s ? s.team : "that"}”. Rename or delete that one first.` : errText(error));
+    return loadTrash();
+  }
+  toast(`✓ Restored “${s ? s.team : "entry"}”`);
+  flashKey = s ? teamKey(s.team) : null;
+  live.refresh(); loadTrash();
+}
+$("trashList").onclick = (e) => { const b = e.target.closest("[data-restore]"); if (b) { b.disabled = true; restore(Number(b.dataset.restore)); } };
 
 // ---------- Boot ----------
 buildRows();

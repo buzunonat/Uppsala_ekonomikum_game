@@ -154,6 +154,22 @@ tr.flash td{animation:flash 2.2s ease-out}
 
 .toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%) translateY(20px);background:var(--fg);color:var(--bg);padding:12px 18px;border-radius:12px;font-weight:600;opacity:0;transition:.25s;pointer-events:none;z-index:10;max-width:calc(100% - 32px);box-shadow:var(--shadow)}
 .toast.on{opacity:1;transform:translateX(-50%)}
+.toast.act{display:flex;align-items:center;gap:14px;padding:8px 8px 8px 18px}
+.toast.act.on{pointer-events:auto}
+
+/* Clickable entries with fun stats */
+tr.row{cursor:pointer}
+.caret{display:inline-block;width:1em;color:var(--mut);font-size:.8em;transition:transform .15s}
+tr.row.open .caret{transform:rotate(90deg)}
+tr.row.open td{background:var(--acc-soft)}
+tr.statrow td{background:var(--acc-soft);padding:4px 12px 16px 28px}
+tr.statrow:hover td{background:var(--acc-soft)}
+tr.bench td{background:color-mix(in srgb,var(--acc) 6%,transparent)}
+.stats{display:grid;grid-template-columns:max-content 1fr;gap:6px 18px;margin:0;font-size:.95rem;line-height:1.4;max-width:720px}
+.stats dt{color:var(--mut);font-weight:600;font-size:.82rem;text-transform:uppercase;letter-spacing:.04em;padding-top:2px}
+.stats dd{margin:0}
+.tag{display:inline-block;font-size:.7rem;font-weight:700;background:var(--acc-soft);color:var(--acc-strong);border:1px solid color-mix(in srgb,var(--acc) 40%,transparent);border-radius:99px;padding:1px 7px;margin-left:4px;vertical-align:1px}
+.tip{margin:10px 0 0}
 
 @media (max-width:1180px){
   .dec{grid-template-columns:minmax(0,1fr) 74px 140px;row-gap:8px}

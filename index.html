@@ -50,6 +50,14 @@ h1{
 .stat span{display:block;font-size:.68em;letter-spacing:.14em;text-transform:uppercase;color:var(--mut)}
 .stat b{display:block;font:800 1.7em/1.15 var(--serif);color:var(--g2);font-variant-numeric:tabular-nums}
 
+/* RA line: a joke benchmark at the econ department RAs' score */
+.raline{display:flex;align-items:center;gap:12px;max-width:1240px;margin:14px auto;list-style:none}
+.raline::before,.raline::after{content:"";flex:1;min-width:16px;border-top:2px dashed rgba(255,154,138,.55)}
+.raline .rl{text-align:center;font-size:.88em;line-height:1.35;color:#ffcfc6;max-width:46em}
+.raline .rl b{color:#fff3ef}
+.list .raline{margin:2px 0}
+.cele.meh .cele-kick{background:linear-gradient(180deg,var(--silver1),var(--silver3));box-shadow:0 8px 30px rgba(0,0,0,.4)}
+.cele.meh .cele-name{background:linear-gradient(100deg,var(--silver3),var(--silver1) 50%,var(--silver3));background-size:250% 100%;-webkit-background-clip:text;background-clip:text}
 /* Podium */
 .podium{display:grid;grid-template-columns:.9fr 1fr 1.18fr 1fr .9fr;grid-template-areas:"p4 p2 p1 p3 p5";align-items:end;gap:clamp(8px,1.4vw,20px);max-width:1240px;margin:0 auto clamp(22px,3.4vw,44px)}
 .p1{grid-area:p1}.p2{grid-area:p2}.p3{grid-area:p3}.p4{grid-area:p4}.p5{grid-area:p5}
@@ -192,7 +200,7 @@ html.calm h1,html.calm .medal,html.calm .crown,html.calm .block::after,html.calm
 
   <section id="board" aria-live="polite"></section>
 
-  <p class="rules">Up to 12 coins per decade. Value = coins × (gold price on your day ÷ gold price at the start of that decade). Weekends and holidays use the last closing price before them. Profit = value − coins invested.</p>
+  <p class="rules">Up to 12 coins per decade. Value = coins × (gold price on your day ÷ gold price at the start of that decade), using inflation-adjusted (real) gold prices. Weekends and holidays use the last closing price before them. Profit = value − coins invested.</p>
   <a class="staff" href="clerk.html">Clerk desk</a>
 </main>
 
@@ -207,7 +215,7 @@ html.calm h1,html.calm .medal,html.calm .crown,html.calm .block::after,html.calm
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
-<script src="app.js?v=7"></script>
+<script src="app.js?v=10"></script>
 <script>
 // Add ?motion=full to the URL to force all animations on (some PCs have "reduce motion" switched on).
 const REDUCED = !/[?&]motion=full\b/.test(location.search) && matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -303,9 +311,27 @@ const LEADER_LINES = [
   "New number one: %t. Everyone else, please act natural.",
   "%t is now the richest team in the room. Allegedly.",
 ];
+const RA_BEAT_LINES = [
+  "%t just passed our econ department RAs! Someone tell the professors.",
+  "%t beat the econ department RAs by %g. Time to renegotiate those RA contracts.",
+  "%t out-invested our econ department RAs. The bar was low, but still.",
+];
+const RA_WORSE_LINES = [
+  "%t scored %v. Our econ department RAs scored %r. Congrats, you did worse than the RAs.",
+  "%t is %g below our econ department RAs. The RAs would like a word.",
+  "Our econ department RAs beat %t by %g. Maybe ask them for tutoring.",
+];
 const pick = (a) => a[Math.floor(Math.random() * a.length)];
+// How a team did against the RAs (just for fun): {beat, kick, line}, or null if there is no RA sheet.
+function raVerdict(s, ra) {
+  if (!ra) return null;
+  const beat = s.value > ra.value;
+  const line = pick(beat ? RA_BEAT_LINES : RA_WORSE_LINES)
+    .replace("%t", s.team).replace("%g", fmt(Math.abs(s.value - ra.value))).replace("%v", fmt(s.value)).replace("%r", fmt(ra.value));
+  return { beat, kick: beat ? "PASSED THE ECON DEPARTMENT RAs" : "THE RAs WIN THIS ONE", line };
+}
 const queue = []; let showing = false;
-function celebrate(kick, name, line) { queue.push({ kick, name, line }); if (!showing) nextCele(); }
+function celebrate(kick, name, line, meh) { queue.push({ kick, name, line, meh }); if (!showing) nextCele(); }
 function nextCele() {
   const c = queue.shift(); if (!c) { showing = false; return; }
   showing = true;
@@ -313,7 +339,8 @@ function nextCele() {
   document.getElementById("celeKick").textContent = c.kick;
   document.getElementById("celeName").textContent = c.name;
   document.getElementById("celeLine").textContent = c.line;
-  el.classList.add("on"); FX.burst();
+  el.classList.toggle("meh", !!c.meh);
+  el.classList.add("on"); if (!c.meh) FX.burst();
   setTimeout(() => { el.classList.remove("on"); setTimeout(nextCele, 600); }, 5200);
 }
 
@@ -358,10 +385,23 @@ function podiumSlot(s, place) {
   </div>`;
 }
 
+// The RA sheet is not a team: it is a joke line in the list, right above the first team that did worse.
+// k = how many teams beat the RAs, n = number of teams.
+function raLine(ra, k, n, tag) {
+  const note = k === n
+    ? `Everyone beat our econ department RAs (${fmt(ra.value)}). The RAs are rethinking their life choices.`
+    : k >= STAGE
+      ? `⬇ Ooh, you did worse than our <b>econ department RAs</b> (${fmt(ra.value)}). You really don't know your facts, huh?`
+      : `Our <b>econ department RAs</b> (${fmt(ra.value)}) beat ${k === 0 ? "every single team" : `everyone from #${k + 1} down`}. You really don't know your facts, huh?`;
+  return `<${tag} class="raline"><span class="rl">${note}</span></${tag}>`;
+}
+
 function render() {
   if (!state || !ready) return;
   const hidden = !!state.settings.scores_hidden;
-  const ranked = Game.rank(state.subs);
+  const scored = Game.rank(state.subs);
+  const ra = scored.find(isRA);               // RA benchmark: shown on its own, not ranked
+  const ranked = scored.filter((s) => !isRA(s));
   const n = ranked.length;
 
   document.getElementById("sTeams").textContent = n;
@@ -373,23 +413,30 @@ function render() {
       <div class="lock" aria-hidden="true">🔐</div>
       <h2>The vault is locked</h2>
       <p>Scores are sealed until the big reveal. These brave investors are in:</p>
-      <div class="tiles">${n ? [...state.subs].sort((a, b) => a.team.localeCompare(b.team)).map((s, i) => `<span class="tile" style="animation-delay:${Math.min(i, 30) * 40}ms">${esc(s.team)}</span>`).join("") : `<span class="mut">Nobody yet. Suspiciously quiet.</span>`}</div>
+      <div class="tiles">${n ? state.subs.filter((s) => !isRA(s)).sort((a, b) => a.team.localeCompare(b.team)).map((s, i) => `<span class="tile" style="animation-delay:${Math.min(i, 30) * 40}ms">${esc(s.team)}</span>`).join("") : `<span class="mut">Nobody yet. Suspiciously quiet.</span>`}</div>
     </div>`;
   } else if (!n) {
     board.innerHTML = `<div class="empty-state"><b>The vault is empty.</b>Suspiciously empty. Hand in your answer sheet to get on the board.</div>`;
   } else {
     flip(() => {
       const rest = ranked.slice(STAGE);
-      const two = rest.length >= 8;
-      board.innerHTML = `<div class="podium">${[4, 2, 1, 3, 5].map((p) => podiumSlot(ranked[p - 1], p)).join("")}</div>
-      ${rest.length ? `<section class="pack">
-        <h2 class="pack-title">${PACK_TITLE}</h2>
-        <ol class="list${two ? " two" : ""}"${two ? ` style="grid-template-rows:repeat(${Math.ceil(rest.length / 2)},auto)"` : ""}>${rest.map((s, k) => `
+      // The RA line goes in the list below the podium, above the first team that did worse
+      // (at the top of the list if podium teams did worse too). With no list, right under the podium.
+      const k = ra ? ranked.filter((s) => s.value > ra.value).length : -1;
+      const inPack = ra && rest.length > 0;
+      const items = rest.map((s, j) => `
         <li class="row" data-id="${s.id}">
-          <span class="rk">${k + STAGE + 1}</span>
+          <span class="rk">${j + STAGE + 1}</span>
           <span class="nm">${esc(s.team)}</span>
           <span class="num"><span class="val"><span data-count="${s.id}">${fmt(s.value)}</span></span><span class="pf">${profitHtml(s.profit)}</span></span>
-        </li>`).join("")}</ol></section>` : ""}`;
+        </li>`);
+      if (inPack) items.splice(Math.max(0, k - STAGE), 0, raLine(ra, k, n, "li"));
+      const two = items.length >= 8;
+      board.innerHTML = `<div class="podium">${[4, 2, 1, 3, 5].map((p) => podiumSlot(ranked[p - 1], p)).join("")}</div>
+      ${ra && !inPack ? raLine(ra, k, n, "div") : ""}
+      ${rest.length ? `<section class="pack">
+        <h2 class="pack-title">${PACK_TITLE}</h2>
+        <ol class="list${two ? " two" : ""}"${two ? ` style="grid-template-rows:repeat(${Math.ceil(items.length / 2)},auto)"` : ""}>${items.join("")}</ol></section>` : ""}`;
     });
     // count-up numbers & fresh highlights
     ranked.forEach((s) => {
@@ -409,19 +456,26 @@ function render() {
 
   // ---- Celebrations ----
   const top3 = ranked.slice(0, 3).map((s) => s.id);
+  const told = new Set(); // new teams whose RA verdict was already added to a podium card
   if (!first && !hidden) {
     if (prevHidden === true) {
       celebrate("THE VAULT IS OPEN", n ? ranked[0].team : "Scores revealed", n ? pick(LEADER_LINES).replace("%t", ranked[0].team) : "");
     } else if (n >= 5 && prevTop3) {
       const newcomers = ranked.slice(0, 3).filter((s) => !prevTop3.includes(s.id));
       newcomers.forEach((s) => {
-        const isLeader = s.id === ranked[0].id;
-        celebrate(isLeader ? "NEW LEADER" : "NEW ON THE PODIUM", s.team, pick(isLeader ? LEADER_LINES : PODIUM_LINES).replace("%t", s.team));
+        const isLeader = s.id === ranked[0].id, v = !seen.has(s.id) && raVerdict(s, ra);
+        if (v) told.add(s.id);
+        celebrate(isLeader ? "NEW LEADER" : "NEW ON THE PODIUM", s.team, pick(isLeader ? LEADER_LINES : PODIUM_LINES).replace("%t", s.team) + (v ? " " + v.line : ""));
       });
       if (!newcomers.length && prevLeader != null && ranked[0].id !== prevLeader) {
         celebrate("NEW LEADER", ranked[0].team, pick(LEADER_LINES).replace("%t", ranked[0].team));
       }
     }
+    // Every newly entered team hears how it did against the RAs (not on the big vault reveal).
+    if (prevHidden !== true) ranked.filter((s) => !seen.has(s.id) && !told.has(s.id)).forEach((s) => {
+      const v = raVerdict(s, ra);
+      if (v) celebrate(v.kick, s.team, v.line, !v.beat);
+    });
   }
   if (!hidden) { prevTop3 = top3; prevLeader = n ? ranked[0].id : null; }
   prevHidden = hidden;

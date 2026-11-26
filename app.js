@@ -3,7 +3,8 @@
 // All writes go through functions that check the clerk passcode.
 const SUPABASE_URL = "https://frpbohlwdcfahpmkaqlk.supabase.co";
 const SUPABASE_KEY = "sb_publishable_Nco-2TfWYBa2ij9KbJ-pJQ_tqwMVgMR";
-const PRICES_URL = "gold-price-history.csv";
+const PRICES_URL = "gold-price-history.csv"; // nominal USD per troy ounce, daily
+const CPI_URL = "cpi-u.csv";                  // US CPI-U (all items, not seasonally adjusted), monthly
 
 const DECADES = [[1970, 1979], [1980, 1989], [1990, 1999], [2000, 2009], [2010, 2019]];
 const MAX_COINS = 12; // most coins a team may put in one decade
@@ -16,6 +17,7 @@ const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY, {
 // ---------- Prices & scoring ----------
 // Rule (from the original game sheet): for each decade, coins invested grow by
 // price(chosen day) / price(first trading day of that decade).
+// Prices are REAL (inflation-adjusted with US CPI-U, in dollars of the latest CPI month).
 // "Perfect" = the same coins invested on that decade's highest day.
 // The price file only has trading days. A weekend or holiday pick uses the last
 // closing price before it (never earlier than the decade's first trading day).
@@ -25,16 +27,45 @@ const Game = {
   bases: [],  // first trading day of each decade
   peaks: [],  // highest day of each decade
 
+  cpiMonth: "", // latest CPI month: real prices are in dollars of this month
+
   async load() {
-    const res = await fetch(PRICES_URL, { cache: "no-cache" });
-    if (!res.ok) throw new Error("Could not load price data (" + res.status + ")");
-    const text = await res.text();
+    const get = async (url, what) => {
+      const res = await fetch(url, { cache: "no-cache" });
+      if (!res.ok) throw new Error("Could not load " + what + " (" + res.status + ")");
+      return res.text();
+    };
+    const [text, cpiText] = await Promise.all([get(PRICES_URL, "price data"), get(CPI_URL, "inflation data")]);
+
+    // Monthly CPI-U index ("YYYY-MM" -> level)
+    const cpi = new Map();
+    cpiText.split(/\r?\n/).forEach((line) => {
+      const [k, v] = line.split(",").map((s) => s.trim());
+      if (/^\d{4}-\d{2}$/.test(k || "") && parseFloat(v) > 0) cpi.set(k, parseFloat(v));
+    });
+    const cpiMonths = [...cpi.keys()].sort();
+    if (!cpiMonths.length) throw new Error("Inflation data is empty");
+    this.cpiMonth = cpiMonths[cpiMonths.length - 1];
+    const latest = cpi.get(this.cpiMonth);
+    // CPI for a month; a month BLS didn't publish uses the last one before it.
+    const cpiFor = (ym) => {
+      if (cpi.has(ym)) return cpi.get(ym);
+      let best = null;
+      for (const k of cpiMonths) { if (k <= ym) best = k; else break; }
+      return best ? cpi.get(best) : null;
+    };
+
+    // Daily gold prices, converted from nominal to real (today's dollars):
+    // real = nominal × CPI(latest month) ÷ CPI(month of that day)
     const days = [];
     text.split(/\r?\n/).forEach((line) => {
       const p = line.split(/[,;\t]/).map((s) => s.trim());
       const m = /^(\d{4})-(\d{1,2})(?:-(\d{1,2}))?$/.exec(p[0] || "");
-      const price = parseFloat(p[1]);
-      if (m && price > 0) days.push({ key: m[1] + "-" + m[2].padStart(2, "0") + "-" + (m[3] || "1").padStart(2, "0"), price });
+      const nominal = parseFloat(p[1]);
+      if (!m || !(nominal > 0)) return;
+      const key = m[1] + "-" + m[2].padStart(2, "0") + "-" + (m[3] || "1").padStart(2, "0");
+      const c = cpiFor(key.slice(0, 7));
+      if (c) days.push({ key, nominal, price: (nominal * latest) / c });
     });
     days.sort((x, y) => (x.key < y.key ? -1 : x.key > y.key ? 1 : 0));
     this.days = days;
@@ -135,6 +166,11 @@ const dateLabel = (key) => { const [y, m, d] = key.split("-"); return (d ? +d + 
 const daysInMonth = (y, m) => new Date(Date.UTC(y, m, 0)).getUTCDate();
 const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 const teamKey = (s) => s.trim().toLowerCase();
+
+// "Tha Big RAs" = the economics department RAs' sheet. It is a benchmark, not a team:
+// it is shown as "the score to beat" and does not take a place in the ranking.
+const RA_TEAM = "tha big ras";
+const isRA = (s) => teamKey(s.team).replace(/\s+/g, " ") === RA_TEAM;
 
 function setLive(el, on) {
   if (!el) return;
