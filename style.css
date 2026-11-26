@@ -66,7 +66,7 @@ kbd{display:inline-block;min-width:1.5em;text-align:center;font:600 .74rem/1 ui-
 
 /* Decade rows */
 .decs{border:1px solid var(--line);border-radius:14px;overflow:hidden}
-.dec{display:grid;grid-template-columns:104px minmax(0,10fr) minmax(0,12fr) 74px 120px;gap:14px;align-items:center;padding:12px 14px;background:var(--surface);transition:background .15s}
+.dec{display:grid;grid-template-columns:104px 74px minmax(0,12fr) minmax(0,10fr) 120px;gap:14px;align-items:center;padding:12px 14px;background:var(--surface);transition:background .15s}
 .dec + .dec{border-top:1px solid var(--line)}
 .dec.active{background:var(--acc-soft)}
 .lbl b{display:flex;align-items:center;gap:6px;font:800 1.15rem/1.1 var(--serif)}

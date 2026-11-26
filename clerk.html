@@ -9,7 +9,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="style.css?v=11">
+<link rel="stylesheet" href="style.css?v=12">
 </head>
 <body>
 <main class="wide">
@@ -47,9 +47,9 @@
         </div>
         <div class="hint" id="teamHint"></div>
         <ul class="howto">
-          <li>Year: last digit <kbd>5</kbd> → 1975</li>
-          <li>Month: number <kbd>3</kbd> → Mar · <kbd>0</kbd><kbd>1</kbd> → Jan</li>
           <li>Day: <kbd>1</kbd><kbd>4</kbd> → 14th · <kbd>7</kbd> → 7th</li>
+          <li>Month: number <kbd>3</kbd> → Mar · <kbd>0</kbd><kbd>1</kbd> → Jan</li>
+          <li>Year: last digit <kbd>5</kbd> → 1975</li>
           <li>Coins: 0–12 per decade</li>
           <li><kbd>Enter</kbd> next decade</li>
           <li><kbd>Ctrl</kbd>+<kbd>Enter</kbd> save · <kbd>Esc</kbd> clear</li>
@@ -162,13 +162,13 @@ function buildRows() {
   $("rows").innerHTML = DECADES.map(([a], i) => `
     <div class="dec" id="dec${i}">
       <div class="lbl"><b><span class="check" aria-hidden="true">✓</span>${a}s</b><small id="sum${i}">—</small></div>
-      <div class="seg years" id="yg${i}" tabindex="0" role="radiogroup" aria-label="${a}s year">
-        ${Array.from({ length: 10 }, (_, k) => `<button type="button" class="chip" tabindex="-1" role="radio" aria-checked="false" aria-label="${a + k}" data-i="${i}" data-y="${a + k}"><kbd class="k">${k}</kbd><span class="v">&#39;${String(a + k).slice(2)}</span></button>`).join("")}
-      </div>
+      <label class="daybox" id="db${i}"><span>day</span><input type="text" class="day" id="d${i}" inputmode="numeric" placeholder="–" aria-label="${a}s day" maxlength="2"></label>
       <div class="seg months" id="mg${i}" tabindex="0" role="radiogroup" aria-label="${a}s month">
         ${MONTHS.map((m, k) => `<button type="button" class="chip" tabindex="-1" role="radio" aria-checked="false" title="Type ${k === 0 ? "01" : k + 1}" data-i="${i}" data-m="${k + 1}"><kbd class="k">${k === 0 ? "01" : k + 1}</kbd><span class="v">${m}</span></button>`).join("")}
       </div>
-      <label class="daybox" id="db${i}"><span>day</span><input type="text" class="day" id="d${i}" inputmode="numeric" placeholder="–" aria-label="${a}s day" maxlength="2"></label>
+      <div class="seg years" id="yg${i}" tabindex="0" role="radiogroup" aria-label="${a}s year">
+        ${Array.from({ length: 10 }, (_, k) => `<button type="button" class="chip" tabindex="-1" role="radio" aria-checked="false" aria-label="${a + k}" data-i="${i}" data-y="${a + k}"><kbd class="k">${k}</kbd><span class="v">&#39;${String(a + k).slice(2)}</span></button>`).join("")}
+      </div>
       <label class="coinbox"><input type="text" class="coins" id="a${i}" inputmode="numeric" placeholder="0" aria-label="${a}s coins" maxlength="2"><span>coins</span><kbd class="enter" aria-hidden="true">↵</kbd></label>
     </div>`).join("");
 
@@ -186,8 +186,8 @@ function buildRows() {
   $("rows").addEventListener("click", (e) => {
     const c = e.target.closest(".chip"); if (!c) return;
     const i = +c.dataset.i;
-    if (c.dataset.y) { sel[i].y = +c.dataset.y; paint(i); mg(i).focus(); }
-    else { monthBuf[i] = ""; sel[i].m = +c.dataset.m; paint(i); dayIn(i).focus(); }
+    if (c.dataset.y) { sel[i].y = +c.dataset.y; paint(i); coin(i).focus(); }
+    else { monthBuf[i] = ""; sel[i].m = +c.dataset.m; paint(i); yg(i).focus(); }
   });
   $("rows").addEventListener("focusin", (e) => {
     const d = e.target.closest(".dec");
@@ -213,27 +213,28 @@ function paint(i) {
   $("dec" + i).classList.toggle("done", !!(s.y && s.m && dayOk(i) && c !== "" && !tooMany));
 }
 
-function nextAfterCoins(i) { if (i < DECADES.length - 1) yg(i + 1).focus(); else $("sheet").requestSubmit(); }
+// Order per decade: day → month → year → coins.
+function nextAfterCoins(i) { if (i < DECADES.length - 1) dayIn(i + 1).focus(); else $("sheet").requestSubmit(); }
 
 function yearKey(e, i) {
   const base = DECADES[i][0], s = sel[i];
-  if (/^[0-9]$/.test(e.key)) { e.preventDefault(); s.y = base + +e.key; paint(i); mg(i).focus(); }
+  if (/^[0-9]$/.test(e.key)) { e.preventDefault(); s.y = base + +e.key; paint(i); coin(i).focus(); }
   else if (e.key === "ArrowRight" || e.key === "ArrowUp") { e.preventDefault(); s.y = Math.min(base + 9, (s.y ?? base - 1) + 1); paint(i); }
   else if (e.key === "ArrowLeft" || e.key === "ArrowDown") { e.preventDefault(); s.y = Math.max(base, (s.y ?? base + 1) - 1); paint(i); }
   else if (e.key === "Backspace" || e.key === "Delete") { e.preventDefault(); s.y = null; paint(i); }
-  else if (e.key === "Enter" && !e.ctrlKey) { e.preventDefault(); mg(i).focus(); }
+  else if (e.key === "Enter" && !e.ctrlKey) { e.preventDefault(); if (s.y) coin(i).focus(); }
 }
 
 function monthKey(e, i) {
   const s = sel[i];
-  const done = () => { monthBuf[i] = ""; paint(i); dayIn(i).focus(); };
+  const done = () => { monthBuf[i] = ""; paint(i); yg(i).focus(); };
   if (/^[0-9]$/.test(e.key)) {
     e.preventDefault();
     const d = +e.key, buf = monthBuf[i];
     if (buf === "0") { if (d >= 1) { s.m = d; done(); } return; }
     if (buf === "1") {
       if (d <= 2) { s.m = 10 + d; done(); }
-      else { s.m = 1; done(); dayIn(i).value = String(d); dayInput(i); } // "1" then 3–9 = January, digit goes to the day
+      else { s.m = 1; monthBuf[i] = ""; s.y = DECADES[i][0] + d; paint(i); coin(i).focus(); } // "1" then 3–9 = January, digit is the year
       return;
     }
     if (d === 0) { monthBuf[i] = "0"; paint(i); return; }
@@ -245,19 +246,19 @@ function monthKey(e, i) {
   else if ((e.key === "Enter" && !e.ctrlKey) || e.key === " ") { e.preventDefault(); if (s.m) done(); }
 }
 
-// Day box: two digits, or one digit that can't start a longer day (4–9, or 3 in February) jumps to coins.
+// Day box: two digits, or one digit that can't start a longer day (4–9) jumps to the month.
 function dayInput(i) {
   const el = dayIn(i), v = el.value.replace(/\D/g, "").slice(0, 2);
   if (v !== el.value) el.value = v;
   sel[i].d = v ? +v : null;
   paint(i);
   const s = sel[i], maxD = s.y && s.m ? daysInMonth(s.y, s.m) : 31;
-  if ((v.length === 2 || (v.length === 1 && +v * 10 > maxD)) && dayOk(i)) coin(i).focus();
+  if ((v.length === 2 || (v.length === 1 && +v * 10 > maxD)) && dayOk(i)) mg(i).focus();
 }
 function dayKey(e, i) {
   const s = sel[i], maxD = s.y && s.m ? daysInMonth(s.y, s.m) : 31;
   const set = (d) => { dayIn(i).value = String(d); s.d = d; paint(i); };
-  if (e.key === "Enter" && !e.ctrlKey) { e.preventDefault(); if (dayOk(i)) coin(i).focus(); }
+  if (e.key === "Enter" && !e.ctrlKey) { e.preventDefault(); if (dayOk(i)) mg(i).focus(); }
   else if (e.key === "ArrowUp") { e.preventDefault(); set(Math.min(maxD, (s.d || 0) + 1)); }
   else if (e.key === "ArrowDown") { e.preventDefault(); set(Math.max(1, Math.min(maxD, (s.d || 2) - 1))); }
 }
@@ -268,7 +269,7 @@ function coinKey(e, i) {
   else if (e.key === "ArrowDown") { e.preventDefault(); coin(i).value = String(Math.max(0, Math.min(MAX_COINS, (+coin(i).value || 0)) - 1)); coin(i).dispatchEvent(new Event("input")); }
 }
 
-$("team").addEventListener("keydown", (e) => { if (e.key === "Enter" && !e.ctrlKey) { e.preventDefault(); yg(0).focus(); } });
+$("team").addEventListener("keydown", (e) => { if (e.key === "Enter" && !e.ctrlKey) { e.preventDefault(); dayIn(0).focus(); } });
 document.addEventListener("keydown", (e) => {
   if ($("desk").classList.contains("hide")) return;
   if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) { e.preventDefault(); $("sheet").requestSubmit(); }
@@ -318,8 +319,9 @@ function validate(f) {
   for (let i = 0; i < DECADES.length; i++) {
     if (!f.dates[i]) {
       const s = sel[i];
-      if (!s.y || !s.m) return { text: `${DECADES[i][0]}s: pick a ${s.y ? "month" : "year"}.`, focus: s.y ? mg(i) : yg(i) };
       if (!s.d) return { text: `${DECADES[i][0]}s: enter a day.`, focus: dayIn(i) };
+      if (!s.m) return { text: `${DECADES[i][0]}s: pick a month.`, focus: mg(i) };
+      if (!s.y) return { text: `${DECADES[i][0]}s: pick a year.`, focus: yg(i) };
       return { text: `${DECADES[i][0]}s: ${MONTHS[s.m - 1]} ${s.y} has no day ${s.d}.`, focus: dayIn(i) };
     }
   }

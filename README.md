@@ -4,7 +4,7 @@ Library quiz game: for each decade (1970s–2010s) a team picks the day they thi
 
 - **`index.html`**: public leaderboard (put it on the big screen, share the link or a QR code). Updates live.
 - **`clerk.html`**: data-entry desk for the organizers. Needs the clerk passcode. Clerks can add, edit and delete entries, and hide scores until the reveal.
-  - Fast keyboard entry: team name → <kbd>Enter</kbd> → year digit (`5` = 1975) → month (`3` = Mar, `12` = Dec, `01` = Jan) → day (`14`, or `7` for the 7th) → coins → <kbd>Enter</kbd> to the next decade. <kbd>Enter</kbd> on the last coins box saves. <kbd>Esc</kbd> clears. Chips can also be clicked.
+  - Fast keyboard entry: team name → <kbd>Enter</kbd> → day (`14`, or `7` for the 7th) → month (`3` = Mar, `12` = Dec, `01` = Jan) → year digit (`5` = 1975) → coins → <kbd>Enter</kbd> to the next decade. <kbd>Enter</kbd> on the last coins box saves. <kbd>Esc</kbd> clears. Chips can also be clicked.
   - A decade with 0 coins needs no date.
   - Click a team in the entries list for a short stats panel to read out: place, score, best decade, closest guess, and how they did against the RAs.
   - Deleting an entry moves it to **Recently deleted** (bottom of the page), where it can be restored. The delete toast also has an Undo button.
