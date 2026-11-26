@@ -9,7 +9,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="style.css?v=12">
+<link rel="stylesheet" href="style.css?v=13">
 </head>
 <body>
 <main class="wide">
@@ -472,6 +472,19 @@ function statsHTML(s, all, ra) {
       : gap > 0 ? `<b>${fmt(gap)} ahead!</b> You beat our econ department RAs.`
       : `Exactly tied with our econ department RAs. Suspicious.`);
   }
+  // Gold price on each pick as one real-price index: first trading day of the game (Jan 1970) = 100.
+  const first = Game.bases[0], idx = (d) => fmt((100 * d.price) / first.price, 0);
+  const picks = DECADES.map(([a], i) => {
+    const p = s.parts[i], e = Game.entry(p.date, i), base = Game.bases[i], pk = Game.peaks[i];
+    const pickCell = p.amt ? `${dateLabel(p.date)}${e.key !== p.date ? ` <span class="mut">(closed, uses ${dateLabel(e.key)})</span>` : ""}` : `<span class="mut">no coins</span>`;
+    return `<tr><td><b>${a}s</b></td><td>${pickCell}</td>
+      <td class="n">${p.amt ? `<b>${idx(e)}</b>` : "–"}</td>
+      <td class="n">${idx(base)}</td>
+      <td class="n">${idx(pk)} <span class="mut">${dateLabel(pk.key)}</span></td>
+      <td class="n">${p.amt}</td><td class="n">${fmt(p.value)}</td></tr>`;
+  }).join("");
+  add("Gold prices", `<table class="mini"><thead><tr><th>Decade</th><th>Their pick</th><th class="n">Gold that day</th><th class="n">Decade start</th><th class="n">Best day</th><th class="n">Coins</th><th class="n">Value</th></tr></thead><tbody>${picks}</tbody></table>
+    <div class="small mut">Real gold price index: ${dateLabel(first.key)} = 100, inflation-adjusted. 700 means gold was worth 7× as much in real terms as in January 1970. Each coin grows by (gold that day ÷ decade start).</div>`);
   return `<dl class="stats">${rows.join("")}</dl>`;
 }
 

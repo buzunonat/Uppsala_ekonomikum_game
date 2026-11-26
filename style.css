@@ -168,6 +168,11 @@ tr.bench td{background:color-mix(in srgb,var(--acc) 6%,transparent)}
 .stats{display:grid;grid-template-columns:max-content 1fr;gap:6px 18px;margin:0;font-size:.95rem;line-height:1.4;max-width:720px}
 .stats dt{color:var(--mut);font-weight:600;font-size:.82rem;text-transform:uppercase;letter-spacing:.04em;padding-top:2px}
 .stats dd{margin:0}
+.stats{max-width:900px}
+table.mini{width:auto;margin:2px 0 6px;font-size:.88rem}
+table.mini th,table.mini td{padding:4px 14px 4px 0;border-bottom:1px solid color-mix(in srgb,var(--acc) 20%,transparent);background:transparent!important}
+table.mini th{font-size:.68rem}
+table.mini td .mut{font-size:.8rem}
 .tag{display:inline-block;font-size:.7rem;font-weight:700;background:var(--acc-soft);color:var(--acc-strong);border:1px solid color-mix(in srgb,var(--acc) 40%,transparent);border-radius:99px;padding:1px 7px;margin-left:4px;vertical-align:1px}
 .tip{margin:10px 0 0}
 
